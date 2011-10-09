@@ -60,9 +60,9 @@ public Native_ForceUpdate(Handle:plugin, numParams)
 Action:Fwd_OnPluginChecking(Handle:plugin)
 {
 	new Action:result = Plugin_Continue;
-	new Function:function = GetFunctionByName(plugin, "Updater_OnPluginChecking");
+	new Function:func = GetFunctionByName(plugin, "Updater_OnPluginChecking");
 	
-	if (function != INVALID_FUNCTION && AddToForward(g_OnPluginChecking, plugin, function))
+	if (func != INVALID_FUNCTION && AddToForward(g_OnPluginChecking, plugin, func))
 	{
 		Call_StartForward(g_OnPluginChecking);
 		Call_Finish(result);
@@ -76,9 +76,9 @@ Action:Fwd_OnPluginChecking(Handle:plugin)
 Action:Fwd_OnPluginDownloading(Handle:plugin)
 {
 	new Action:result = Plugin_Continue;
-	new Function:function = GetFunctionByName(plugin, "Updater_OnPluginDownloading");
+	new Function:func = GetFunctionByName(plugin, "Updater_OnPluginDownloading");
 	
-	if (function != INVALID_FUNCTION && AddToForward(g_OnPluginDownloading, plugin, function))
+	if (func != INVALID_FUNCTION && AddToForward(g_OnPluginDownloading, plugin, func))
 	{
 		Call_StartForward(g_OnPluginDownloading);
 		Call_Finish(result);
@@ -91,9 +91,9 @@ Action:Fwd_OnPluginDownloading(Handle:plugin)
 // forward Updater_OnPluginUpdating();
 Fwd_OnPluginUpdating(Handle:plugin)
 {
-	new Function:function = GetFunctionByName(plugin, "Updater_OnPluginUpdating");
+	new Function:func = GetFunctionByName(plugin, "Updater_OnPluginUpdating");
 	
-	if (function != INVALID_FUNCTION && AddToForward(g_OnPluginUpdating, plugin, function))
+	if (func != INVALID_FUNCTION && AddToForward(g_OnPluginUpdating, plugin, func))
 	{
 		Call_StartForward(g_OnPluginUpdating);
 		Call_Finish();
@@ -104,9 +104,9 @@ Fwd_OnPluginUpdating(Handle:plugin)
 // forward Updater_OnPluginUpdated();
 Fwd_OnPluginUpdated(Handle:plugin)
 {
-	new Function:function = GetFunctionByName(plugin, "Updater_OnPluginUpdated");
+	new Function:func = GetFunctionByName(plugin, "Updater_OnPluginUpdated");
 	
-	if (function != INVALID_FUNCTION && AddToForward(g_OnPluginUpdated, plugin, function))
+	if (func != INVALID_FUNCTION && AddToForward(g_OnPluginUpdated, plugin, func))
 	{
 		Call_StartForward(g_OnPluginUpdated);
 		Call_Finish();
