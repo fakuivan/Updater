@@ -3,10 +3,10 @@
 
 /*
 Input:
-http://smac.moooo.com/smac/updates/SMAC.txt
+http://website.com/files/myplugin/updatefile.txt
 
 Output:
-http://smac.moooo.com/smac/updates
+http://website.com/files/myplugin
 */
 StripURLFilename(String:url[])
 {
@@ -15,12 +15,12 @@ StripURLFilename(String:url[])
 
 /*
 Input:
-http://smac.moooo.com/smac/updates/SMAC.txt
+http://website.com/files/myplugin/updatefile.txt
 
 Output:
-smac.moooo.com
-/smac/updates
-SMAC.txt
+website.com
+/files/myplugin
+updatefile.txt
 */
 ParseURL(const String:url[], String:host[], maxHost, String:location[], maxLoc, String:filename[], maxName)
 {
@@ -47,11 +47,11 @@ ParseURL(const String:url[], String:host[], maxHost, String:location[], maxLoc, 
 
 /*
 Input:
-Path_SM/plugins/smac.smx
+Path_SM/plugins/myplugin.smx
 Path_Mod/maps/jumanji.bsp
 
 Output:
-addons/sourcemod/plugins/smac.smx
+addons/sourcemod/plugins/myplugin.smx
 maps/jumanji.bsp
 */
 ParseKVPathForLocal(const String:path[], String:buffer[], maxlength)
@@ -85,11 +85,11 @@ ParseKVPathForLocal(const String:path[], String:buffer[], maxlength)
 
 /*
 Input:
-Path_SM/plugins/smac.smx
+Path_SM/plugins/myplugin.smx
 Path_Mod/maps/jumanji.bsp
 
 Output:
-/plugins/smac.smx
+/plugins/myplugin.smx
 /maps/jumanji.bsp
 */
 ParseKVPathForDownload(const String:path[], String:buffer[], maxlength)
@@ -107,7 +107,7 @@ ParseKVPathForDownload(const String:path[], String:buffer[], maxlength)
 
 bool:ParseUpdateFile(index, const String:path[])
 {
-	/* Return true if a download was started. */
+	/* Return true if an update was available. */
 	decl String:kvLatestVersion[16], String:kvPrevVersion[16], String:sBuffer[MAX_URL_LENGTH];
 	new bool:bUpdate = false;
 	

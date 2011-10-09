@@ -22,7 +22,7 @@ native Updater_RemovePlugin();
 
 /**
  * Forces your plugin to be checked for updates. The behaviour 
- * of the update is dependant on the user's configuration.
+ * of the update is dependant on the server's configuration.
  *
  * @return		True if an update was triggered. False otherwise.
  * @error		Plugin not found in updater.
