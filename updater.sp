@@ -9,7 +9,7 @@
 
 /* Plugin Info */
 #define PLUGIN_NAME 		"Updater"
-#define PLUGIN_VERSION 		"1.0.1-dev"
+#define PLUGIN_VERSION 		"1.0.1"
 
 public Plugin:myinfo =
 {
@@ -21,7 +21,7 @@ public Plugin:myinfo =
 };
 
 /* Globals */
-#define DEBUG		// This will enable verbose logging. Useful for developers testing their updates.
+//#define DEBUG		// This will enable verbose logging. Useful for developers testing their updates.
 
 #define CURL_AVAILABLE()	(GetFeatureStatus(FeatureType_Native, "curl_easy_init") == FeatureStatus_Available)
 #define SOCKET_AVAILABLE()	(GetFeatureStatus(FeatureType_Native, "SocketCreate") == FeatureStatus_Available)
