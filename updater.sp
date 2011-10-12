@@ -17,7 +17,7 @@ public Plugin:myinfo =
 	author = "GoD-Tony",
 	description = "Automatically updates SourceMod plugins and files",
 	version = PLUGIN_VERSION,
-	url = "http://www.sourcemod.net/"
+	url = "http://forums.alliedmods.net/showthread.php?t=169095"
 };
 
 /* Globals */
