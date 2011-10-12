@@ -108,6 +108,14 @@ ParseKVPathForDownload(const String:path[], String:buffer[], maxlength)
 bool:ParseUpdateFile(index, const String:path[])
 {
 	/* Return true if an update was available. */
+	new Handle:kv = CreateKeyValues("Updater");
+	
+	if (!FileToKeyValues(kv, path))
+	{
+		CloseHandle(kv);
+		return false;
+	}
+	
 	decl String:kvLatestVersion[16], String:kvPrevVersion[16], String:sBuffer[MAX_URL_LENGTH];
 	new bool:bUpdate = false;
 	
@@ -115,9 +123,6 @@ bool:ParseUpdateFile(index, const String:path[])
 	new Handle:hPlugin = IndexToPlugin(index);
 	new Handle:hFiles = Updater_GetFiles(index);
 	ClearArray(hFiles);
-	
-	new Handle:kv = CreateKeyValues("Updater");
-	FileToKeyValues(kv, path);
 	
 	// Get update information.
 	if (KvJumpToKey(kv, "Information"))
@@ -148,6 +153,12 @@ bool:ParseUpdateFile(index, const String:path[])
 		}
 		
 		KvGoBack(kv);
+	}
+	else
+	{
+		CloseHandle(hNotes);
+		CloseHandle(kv);
+		return false;
 	}
 	
 	// Check if we have the latest version.
