@@ -167,12 +167,11 @@ bool:ParseUpdateFile(index, const String:path[])
 	
 	if (!StrEqual(sCurrentVersion, kvLatestVersion))
 	{
-		decl String:sFilename[64], String:sName[64], String:sAuthor[64];
+		decl String:sFilename[64], String:sName[64];
 		GetPluginFilename(hPlugin, sFilename, sizeof(sFilename));
 		GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName));
-		GetPluginInfo(hPlugin, PlInfo_Author, sAuthor, sizeof(sAuthor));
 		
-		Updater_Log("Update available for \"%s\" (%s) by %s. %s -> %s", sName, sFilename, sAuthor, sCurrentVersion, kvLatestVersion);
+		Updater_Log("Update available for \"%s\" (%s). Current: %s - Latest: %s", sName, sFilename, sCurrentVersion, kvLatestVersion);
 		
 		new maxNotes = GetArraySize(hNotes);
 		for (new i = 0; i < maxNotes; i++)
