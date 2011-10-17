@@ -179,6 +179,8 @@ public OnSettingsChanged(Handle:convar, const String:oldValue[], const String:ne
 #if !defined DEBUG
 public Updater_OnPluginUpdated()
 {
+	Updater_Log("Reloading Updater plugin... updates will resume automatically.");
+	
 	// Reload this plugin.
 	decl String:filename[64];
 	GetPluginFilename(INVALID_HANDLE, filename, sizeof(filename));

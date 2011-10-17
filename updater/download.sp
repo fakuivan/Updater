@@ -139,10 +139,16 @@ DownloadEnded(bool:successful)
 				if (StrEqual(dest, lastfile))
 				{
 					new Handle:hPlugin = IndexToPlugin(index);
+					
 					Fwd_OnPluginUpdating(hPlugin);
 					FinalizeDownload(index);
-					Fwd_OnPluginUpdated(hPlugin);
+					
+					decl String:sName[64];
+					GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName));
+					Updater_Log("Successfully updated and installed \"%s\".", sName);
+					
 					Updater_SetStatus(index, Status_Updated);
+					Fwd_OnPluginUpdated(hPlugin);
 				}
 			}
 			else
