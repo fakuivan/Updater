@@ -52,6 +52,7 @@ new Handle:g_hRemoveQueue = INVALID_HANDLE;
 new bool:g_bDownloading = false;
 
 new Handle:g_hUpdateTimer = INVALID_HANDLE;
+new Float:g_fLastUpdate = 0.0;
 new String:g_sDataPath[PLATFORM_MAX_PATH];
 
 /* Core Includes */
@@ -97,6 +98,8 @@ public OnPluginStart()
 		SetFailState(EXTENSION_ERROR);
 	}
 	
+	LoadTranslations("common.phrases");
+	
 	// ConVar handling.
 	g_hCvarVersion = CreateConVar("sm_updater_version", PLUGIN_VERSION, PLUGIN_NAME, FCVAR_PLUGIN|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	OnVersionChanged(g_hCvarVersion, "", "");
@@ -105,6 +108,9 @@ public OnPluginStart()
 	g_hCvarUpdater = CreateConVar("sm_updater", "2", "Determines update functionality. (1 = Notify, 2 = Download, 3 = Include source code)", FCVAR_PLUGIN, true, 1.0, true, 3.0);
 	OnSettingsChanged(g_hCvarUpdater, "", "");
 	HookConVarChange(g_hCvarUpdater, OnSettingsChanged);
+	
+	// Commands.
+	RegAdminCmd("sm_updater_check", Command_Check, ADMFLAG_RCON, "Forces Updater to check for updates.");
 	
 	// Initialize arrays.
 	g_hPluginPacks = CreateArray();
@@ -131,7 +137,10 @@ public OnAllPluginsLoaded()
 
 public Action:Timer_FirstUpdate(Handle:timer)
 {
-	TriggerTimer(g_hUpdateTimer, true);
+	if (g_fLastUpdate == 0.0)
+	{
+		TriggerTimer(g_hUpdateTimer, true);
+	}
 	
 	return Plugin_Stop;
 }
@@ -150,7 +159,26 @@ public Action:Timer_CheckUpdates(Handle:timer)
 		}
 	}
 	
+	g_fLastUpdate = GetTickedTime();
+	
 	return Plugin_Continue;
+}
+
+public Action:Command_Check(client, args)
+{
+	new Float:fNextUpdate = g_fLastUpdate + 3600.0;
+	
+	if (fNextUpdate > GetTickedTime())
+	{
+		ReplyToCommand(client, "[Updater] Updates can only be checked once per hour. %.1f minutes remaining.", (fNextUpdate - GetTickedTime()) / 60.0);
+	}
+	else
+	{
+		ReplyToCommand(client, "[Updater] Checking for updates.");
+		TriggerTimer(g_hUpdateTimer, true);
+	}
+
+	return Plugin_Handled;
 }
 
 public OnVersionChanged(Handle:convar, const String:oldValue[], const String:newValue[])
