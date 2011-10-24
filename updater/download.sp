@@ -116,7 +116,7 @@ AddToDownloadQueue(index, const String:url[], const String:dest[])
 	ProcessDownloadQueue();
 }
 
-DownloadEnded(bool:successful)
+DownloadEnded(bool:successful, const String:error[]="")
 {
 	new Handle:hQueuePack = GetArrayCell(g_hDownloadQueue, 0);
 	ResetPack(hQueuePack);
@@ -178,9 +178,10 @@ DownloadEnded(bool:successful)
 				
 				decl String:filename[64];
 				GetPluginFilename(IndexToPlugin(index), filename, sizeof(filename));
-				Updater_Log("Error downloading update for plugin \"%s\"", filename);
+				Updater_Log("Error downloading update for plugin: %s", filename);
 				Updater_Log("  [0]  URL: %s", url);
 				Updater_Log("  [1]  Destination: %s", dest);
+				Updater_Log("  [2]  %s", error);
 			}
 		}
 		
