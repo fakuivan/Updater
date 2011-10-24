@@ -37,12 +37,9 @@ public OnCurlComplete(Handle:curl, CURLcode:code, any:hFile)
 	}
 	else
 	{
-#if defined DEBUG
-		// Logging this on official builds will annoy server owners running unmaintained plugins.
-		decl String:error_buffer[256];
-		curl_easy_strerror(code, error_buffer, sizeof(error_buffer));
-		LogError("cURL error: %s", error_buffer);
-#endif
-		DownloadEnded(false);
+		decl String:sError[256];
+		curl_easy_strerror(code, sError, sizeof(sError));
+		Format(sError, sizeof(sError), "cURL error: %s", sError);
+		DownloadEnded(false, sError);
 	}
 }

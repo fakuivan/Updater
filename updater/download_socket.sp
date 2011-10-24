@@ -65,11 +65,8 @@ public OnSocketError(Handle:socket, const errorType, const errorNum, any:hDLPack
 	CloseHandle(Handle:ReadPackCell(hDLPack));	// hFile
 	CloseHandle(hDLPack);
 	CloseHandle(socket);
-	
-#if defined DEBUG
-	// Logging this on official builds will annoy server owners running unmaintained plugins.
-	LogError("Socket error: %d (Error code %d)", errorType, errorNum);
-#endif
-	
-	DownloadEnded(false);
+
+	decl String:sError[256];
+	FormatEx(sError, sizeof(sError), "Socket error: %d (Error code %d)", errorType, errorNum);
+	DownloadEnded(false, sError);
 }

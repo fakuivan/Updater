@@ -24,11 +24,9 @@ public OnSteamHTTPComplete(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful
 	}
 	else
 	{
-#if defined DEBUG
-		// Logging this on official builds will annoy server owners running unmaintained plugins.
-		LogError("SteamTools error (status code %i). Request successful: %s", _:statusCode, requestSuccessful ? "Yes" : "No");
-#endif
-		DownloadEnded(false);
+		decl String:sError[256];
+		FormatEx(sError, sizeof(sError), "SteamTools error (status code %i). Request successful: %s", _:statusCode, requestSuccessful ? "True" : "False");
+		DownloadEnded(false, sError);
 	}
 	
 	Steam_ReleaseHTTPRequest(HTTPRequest);
