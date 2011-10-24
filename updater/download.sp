@@ -3,6 +3,7 @@
 
 #include "updater/download_curl.sp"
 #include "updater/download_socket.sp"
+#include "updater/download_steamtools.sp"
 
 FinalizeDownload(index)
 {
@@ -49,9 +50,9 @@ AbortDownload(index)
 	ClearArray(hFiles);
 }
 
-ProcessDownloadQueue()
+ProcessDownloadQueue(bool:force=false)
 {
-	if (g_bDownloading || !GetArraySize(g_hDownloadQueue))
+	if (!force && (g_bDownloading || !GetArraySize(g_hDownloadQueue)))
 	{
 		return;
 	}
@@ -63,7 +64,18 @@ ProcessDownloadQueue()
 	ReadPackString(hQueuePack, url, sizeof(url));
 	ReadPackString(hQueuePack, dest, sizeof(dest));
 	
-	if (CURL_AVAILABLE())
+	if (STEAMTOOLS_AVAILABLE())
+	{
+		if (g_bSteamLoaded)
+		{
+			Download_SteamTools(url, dest);
+		}
+		else
+		{
+			CreateTimer(10.0, Timer_RetryQueue);
+		}
+	}
+	else if (CURL_AVAILABLE())
 	{
 		Download_cURL(url, dest);
 	}
@@ -73,7 +85,7 @@ ProcessDownloadQueue()
 	}
 	else
 	{
-		SetFailState("This plugin requires the cURL or Socket extension.");
+		SetFailState(EXTENSION_ERROR);
 	}
 	
 #if defined DEBUG
@@ -83,6 +95,13 @@ ProcessDownloadQueue()
 #endif
 	
 	g_bDownloading = true;
+}
+
+public Action:Timer_RetryQueue(Handle:timer)
+{
+	ProcessDownloadQueue(true);
+	
+	return Plugin_Stop;
 }
 
 AddToDownloadQueue(index, const String:url[], const String:dest[])

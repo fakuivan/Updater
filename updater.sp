@@ -5,11 +5,12 @@
 #undef REQUIRE_EXTENSIONS
 #include <cURL>
 #include <socket>
+#include <steamtools>
 #define REQUIRE_EXTENSIONS
 
 /* Plugin Info */
 #define PLUGIN_NAME 		"Updater"
-#define PLUGIN_VERSION 		"1.0.3-dev"
+#define PLUGIN_VERSION 		"1.1.0-dev"
 
 public Plugin:myinfo =
 {
@@ -23,11 +24,13 @@ public Plugin:myinfo =
 /* Globals */
 #define DEBUG		// This will enable verbose logging. Useful for developers testing their updates.
 
-#define CURL_AVAILABLE()	(GetFeatureStatus(FeatureType_Native, "curl_easy_init") == FeatureStatus_Available)
-#define SOCKET_AVAILABLE()	(GetFeatureStatus(FeatureType_Native, "SocketCreate") == FeatureStatus_Available)
+#define CURL_AVAILABLE()		(GetFeatureStatus(FeatureType_Native, "curl_easy_init") == FeatureStatus_Available)
+#define SOCKET_AVAILABLE()		(GetFeatureStatus(FeatureType_Native, "SocketCreate") == FeatureStatus_Available)
+#define STEAMTOOLS_AVAILABLE()	(GetFeatureStatus(FeatureType_Native, "Steam_CreateHTTPRequest") == FeatureStatus_Available)
 
-#define MAX_URL_LENGTH		256
+#define EXTENSION_ERROR		"This plugin requires either the cURL, Socket, or SteamTools extension to function."
 #define TEMP_FILE_EXT		"temp"		// All files are downloaded with this extension first.
+#define MAX_URL_LENGTH		256
 
 #define UPDATE_URL			"http://godtony.mooo.com/updater/updater.txt"
 
@@ -75,6 +78,12 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	MarkNativeAsOptional("SocketConnect");
 	MarkNativeAsOptional("SocketSend");
 	
+	// SteamTools
+	MarkNativeAsOptional("Steam_CreateHTTPRequest");
+	MarkNativeAsOptional("Steam_SendHTTPRequest");
+	MarkNativeAsOptional("Steam_WriteHTTPResponseBody");
+	MarkNativeAsOptional("Steam_ReleaseHTTPRequest");
+	
 	API_Init();
 	RegPluginLibrary("updater");
 	
@@ -83,9 +92,9 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 
 public OnPluginStart()
 {
-	if (!CURL_AVAILABLE() && !SOCKET_AVAILABLE())
+	if (!CURL_AVAILABLE() && !SOCKET_AVAILABLE() && !STEAMTOOLS_AVAILABLE())
 	{
-		SetFailState("This plugin requires the cURL or Socket extension.");
+		SetFailState(EXTENSION_ERROR);
 	}
 	
 	// ConVar handling.
