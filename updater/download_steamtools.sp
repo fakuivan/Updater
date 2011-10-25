@@ -3,10 +3,21 @@
 
 Download_SteamTools(const String:url[], const String:dest[])
 {
+	decl String:sURL[MAX_URL_LENGTH];
+	
+	if (strncmp(url, "http://", 7) != 0)
+	{
+		FormatEx(sURL, sizeof(sURL), "http://%s", url);
+	}
+	else
+	{
+		strcopy(sURL, sizeof(sURL), url);
+	}
+	
 	new Handle:hDLPack = CreateDataPack();
 	WritePackString(hDLPack, dest);
 
-	new HTTPRequestHandle:hRequest = Steam_CreateHTTPRequest(HTTPMethod_GET, url);
+	new HTTPRequestHandle:hRequest = Steam_CreateHTTPRequest(HTTPMethod_GET, sURL);
 	Steam_SendHTTPRequest(hRequest, OnSteamHTTPComplete, hDLPack);
 }
 
