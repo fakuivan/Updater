@@ -10,7 +10,7 @@
 
 /* Plugin Info */
 #define PLUGIN_NAME 		"Updater"
-#define PLUGIN_VERSION 		"1.1.1"
+#define PLUGIN_VERSION 		"1.1.2"
 
 public Plugin:myinfo =
 {
@@ -81,6 +81,7 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	
 	// SteamTools
 	MarkNativeAsOptional("Steam_CreateHTTPRequest");
+	MarkNativeAsOptional("Steam_SetHTTPRequestHeaderValue");
 	MarkNativeAsOptional("Steam_SendHTTPRequest");
 	MarkNativeAsOptional("Steam_WriteHTTPResponseBody");
 	MarkNativeAsOptional("Steam_ReleaseHTTPRequest");
