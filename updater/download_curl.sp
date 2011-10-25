@@ -23,6 +23,8 @@ Download_cURL(const String:url[], const String:dest[])
 	curl_easy_setopt_int_array(curl, CURL_Default_opt, sizeof(CURL_Default_opt));
 	curl_easy_setopt_handle(curl, CURLOPT_WRITEDATA, hFile);
 	curl_easy_setopt_string(curl, CURLOPT_URL, url);
+	curl_easy_setopt_string(curl, CURLOPT_HTTPHEADER, "Pragma: no-cache");
+	curl_easy_setopt_string(curl, CURLOPT_HTTPHEADER, "Cache-Control: no-cache");
 	curl_easy_perform_thread(curl, OnCurlComplete, hFile);
 }
 

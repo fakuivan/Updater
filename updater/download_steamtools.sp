@@ -18,6 +18,8 @@ Download_SteamTools(const String:url[], const String:dest[])
 	WritePackString(hDLPack, dest);
 
 	new HTTPRequestHandle:hRequest = Steam_CreateHTTPRequest(HTTPMethod_GET, sURL);
+	Steam_SetHTTPRequestHeaderValue(hRequest, "Pragma", "no-cache");
+	Steam_SetHTTPRequestHeaderValue(hRequest, "Cache-Control", "no-cache");
 	Steam_SendHTTPRequest(hRequest, OnSteamHTTPComplete, hDLPack);
 }
 

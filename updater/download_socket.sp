@@ -14,7 +14,7 @@ Download_Socket(const String:url[], const String:dest[])
 	// Format HTTP GET method.
 	decl String:hostname[64], String:location[128], String:filename[64], String:sRequest[MAX_URL_LENGTH+128];
 	ParseURL(url, hostname, sizeof(hostname), location, sizeof(location), filename, sizeof(filename));
-	Format(sRequest, sizeof(sRequest), "GET %s/%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n", location, filename, hostname);
+	FormatEx(sRequest, sizeof(sRequest), "GET %s/%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n", location, filename, hostname);
 	
 	new Handle:hDLPack = CreateDataPack();
 	WritePackCell(hDLPack, _:hFile);
