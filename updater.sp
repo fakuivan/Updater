@@ -66,6 +66,8 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 {
 	// cURL
 	MarkNativeAsOptional("curl_OpenFile");
+	MarkNativeAsOptional("curl_slist");
+	MarkNativeAsOptional("curl_slist_append");
 	MarkNativeAsOptional("curl_easy_init");
 	MarkNativeAsOptional("curl_easy_setopt_int_array");
 	MarkNativeAsOptional("curl_easy_setopt_handle");
