@@ -3,6 +3,9 @@
 
 Download_cURL(const String:url[], const String:dest[])
 {
+	decl String:sURL[MAX_URL_LENGTH];
+	PrefixURL(sURL, sizeof(sURL), url);
+	
 	new Handle:hFile = curl_OpenFile(dest, "wb");
 	
 	if (hFile == INVALID_HANDLE)

@@ -4,15 +4,7 @@
 Download_SteamTools(const String:url[], const String:dest[])
 {
 	decl String:sURL[MAX_URL_LENGTH];
-	
-	if (strncmp(url, "http://", 7) != 0)
-	{
-		FormatEx(sURL, sizeof(sURL), "http://%s", url);
-	}
-	else
-	{
-		strcopy(sURL, sizeof(sURL), url);
-	}
+	PrefixURL(sURL, sizeof(sURL), url);
 	
 	new Handle:hDLPack = CreateDataPack();
 	WritePackString(hDLPack, dest);
