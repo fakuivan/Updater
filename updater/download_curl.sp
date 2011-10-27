@@ -7,8 +7,9 @@ Download_cURL(const String:url[], const String:dest[])
 	
 	if (hFile == INVALID_HANDLE)
 	{
-		DownloadEnded(false);
-		ThrowError("Error writing to file: %s", dest);
+		decl String:sError[256];
+		FormatEx(sError, sizeof(sError), "Error writing to file: %s", dest);
+		DownloadEnded(false, sError);
 	}
 	
 	new CURL_Default_opt[][2] = {
