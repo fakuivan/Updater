@@ -1,25 +1,13 @@
 
 /* File System Parsers */
 
-/*
-Input:
-http://website.com/files/myplugin/updatefile.txt
-
-Output:
-http://website.com/files/myplugin
-*/
+// Strip filename and trailing slash from URL.
 StripURLFilename(String:url[])
 {
 	strcopy(url, FindCharInString(url, '/', true) + 1, url);
 }
 
-/*
-Input:
-www.website.com/files/myplugin/updatefile.txt
-
-Output:
-http://www.website.com/files/myplugin/updatefile.txt
-*/
+// Add http protocol to url if it's missing.
 PrefixURL(String:buffer[], maxlength, const String:url[])
 {
 	if (strncmp(url, "http://", 7) != 0)
@@ -32,15 +20,7 @@ PrefixURL(String:buffer[], maxlength, const String:url[])
 	}
 }
 
-/*
-Input:
-http://website.com/files/myplugin/updatefile.txt
-
-Output:
-website.com
-/files/myplugin
-updatefile.txt
-*/
+// Split URL into hostname, location, and filename. No trailing slashes.
 ParseURL(const String:url[], String:host[], maxHost, String:location[], maxLoc, String:filename[], maxName)
 {
 	// Strip url prefix.
@@ -64,15 +44,7 @@ ParseURL(const String:url[], String:host[], maxHost, String:location[], maxLoc, 
 	Format(filename, maxName, "%s", dirs[total-1]);
 }
 
-/*
-Input:
-Path_SM/plugins/myplugin.smx
-Path_Mod/maps/jumanji.bsp
-
-Output:
-addons/sourcemod/plugins/myplugin.smx
-maps/jumanji.bsp
-*/
+// Converts Updater KV file paths into paths relative to the game folder.
 ParseKVPathForLocal(const String:path[], String:buffer[], maxlength)
 {
 	decl String:dirs[16][64];
@@ -102,15 +74,7 @@ ParseKVPathForLocal(const String:path[], String:buffer[], maxlength)
 	Format(buffer, maxlength, "%s%s", buffer, dirs[total-1]);
 }
 
-/*
-Input:
-Path_SM/plugins/myplugin.smx
-Path_Mod/maps/jumanji.bsp
-
-Output:
-/plugins/myplugin.smx
-/maps/jumanji.bsp
-*/
+// Converts Updater KV file paths into paths relative to the plugin's update URL.
 ParseKVPathForDownload(const String:path[], String:buffer[], maxlength)
 {
 	decl String:dirs[16][64];
@@ -124,6 +88,9 @@ ParseKVPathForDownload(const String:path[], String:buffer[], maxlength)
 	}
 }
 
+// Parses a plugin's update file.
+// Logs update notes and begins download if required.
+// Returns true if an update was available.
 bool:ParseUpdateFile(index, const String:path[])
 {
 	/* Return true if an update was available. */
