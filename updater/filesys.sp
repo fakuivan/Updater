@@ -15,6 +15,25 @@ StripURLFilename(String:url[])
 
 /*
 Input:
+www.website.com/files/myplugin/updatefile.txt
+
+Output:
+http://www.website.com/files/myplugin/updatefile.txt
+*/
+PrefixURL(String:buffer[], maxlength, const String:url[])
+{
+	if (strncmp(url, "http://", 7) != 0)
+	{
+		FormatEx(buffer, maxlength, "http://%s", url);
+	}
+	else
+	{
+		strcopy(buffer, maxlength, url);
+	}
+}
+
+/*
+Input:
 http://website.com/files/myplugin/updatefile.txt
 
 Output:
