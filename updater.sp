@@ -10,7 +10,7 @@
 
 /* Plugin Info */
 #define PLUGIN_NAME 		"Updater"
-#define PLUGIN_VERSION 		"1.1.2"
+#define PLUGIN_VERSION 		"1.1.3"
 
 public Plugin:myinfo =
 {
@@ -103,7 +103,7 @@ public OnPluginStart()
 	
 	LoadTranslations("common.phrases");
 	
-	// ConVar handling.
+	// Convars.
 	g_hCvarVersion = CreateConVar("sm_updater_version", PLUGIN_VERSION, PLUGIN_NAME, FCVAR_PLUGIN|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	OnVersionChanged(g_hCvarVersion, "", "");
 	HookConVarChange(g_hCvarVersion, OnVersionChanged);
@@ -114,6 +114,7 @@ public OnPluginStart()
 	
 	// Commands.
 	RegAdminCmd("sm_updater_check", Command_Check, ADMFLAG_RCON, "Forces Updater to check for updates.");
+	RegAdminCmd("sm_updater_status", Command_Status, ADMFLAG_RCON, "View the status of Updater.");
 	
 	// Initialize arrays.
 	g_hPluginPacks = CreateArray();
@@ -180,6 +181,32 @@ public Action:Command_Check(client, args)
 		ReplyToCommand(client, "[Updater] Checking for updates.");
 		TriggerTimer(g_hUpdateTimer, true);
 	}
+
+	return Plugin_Handled;
+}
+
+public Action:Command_Status(client, args)
+{
+	decl String:sFilename[64];
+	new Handle:hPlugin = INVALID_HANDLE;
+	new maxPlugins = GetMaxPlugins();
+	
+	ReplyToCommand(client, "[Updater] -- Status Begin --");
+	ReplyToCommand(client, "Plugins being monitored for updates:");
+	
+	for (new i = 0; i < maxPlugins; i++)
+	{
+		hPlugin = IndexToPlugin(i);
+		
+		if (IsValidPlugin(hPlugin))
+		{
+			GetPluginFilename(hPlugin, sFilename, sizeof(sFilename));
+			ReplyToCommand(client, "  [%i]  %s", i, sFilename);
+		}
+	}
+	
+	ReplyToCommand(client, "Last update check was %.1f minutes ago.", (GetTickedTime() - g_fLastUpdate) / 60.0);
+	ReplyToCommand(client, "[Updater] --- Status End ---");
 
 	return Plugin_Handled;
 }
