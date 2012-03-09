@@ -1,10 +1,25 @@
 
 /* File System Parsers */
 
-// Strip filename and trailing slash from URL.
-StripURLFilename(String:url[])
+// Strip filename from path.
+StripPathFilename(String:path[])
 {
-	strcopy(url, FindCharInString(url, '/', true) + 1, url);
+	strcopy(path, FindCharInString(path, '/', true) + 1, path);
+}
+
+// Return the filename and extension from a given path.
+GetPathBasename(String:path[], String:buffer[], maxlength)
+{
+	new check = -1;
+	if ((check = FindCharInString(path, '/', true)) != -1 ||
+		(check = FindCharInString(path, '\\', true)) != -1)
+	{
+		strcopy(buffer, maxlength, path[check+1]);
+	}
+	else
+	{
+		strcopy(buffer, maxlength, path);
+	}
 }
 
 // Add http protocol to url if it's missing.
@@ -148,12 +163,12 @@ bool:ParseUpdateFile(index, const String:path[])
 	}
 	
 	// Check if we have the latest version.
-	decl String:sCurrentVersion[16];
+	decl String:sCurrentVersion[16], String:sFilename[64];
 	GetPluginInfo(hPlugin, PlInfo_Version, sCurrentVersion, sizeof(sCurrentVersion));
 	
 	if (!StrEqual(sCurrentVersion, kvLatestVersion))
 	{
-		decl String:sFilename[64], String:sName[64];
+		decl String:sName[64];
 		GetPluginFilename(hPlugin, sFilename, sizeof(sFilename));
 		GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName));
 		
@@ -175,7 +190,7 @@ bool:ParseUpdateFile(index, const String:path[])
 		// Prepare URL
 		decl String:urlprefix[MAX_URL_LENGTH], String:url[MAX_URL_LENGTH], String:dest[PLATFORM_MAX_PATH];
 		Updater_GetURL(index, urlprefix, sizeof(urlprefix));
-		StripURLFilename(urlprefix);
+		StripPathFilename(urlprefix);
 		
 		// Get all files needed for download.
 		KvJumpToKey(kv, "Files");
@@ -200,8 +215,20 @@ bool:ParseUpdateFile(index, const String:path[])
 					ParseKVPathForDownload(sBuffer, url, sizeof(url));
 					Format(url, sizeof(url), "%s%s", urlprefix, url);
 					
-					// Save the file location for later.
+					// Make sure the current plugin path matches the update.
 					ParseKVPathForLocal(sBuffer, dest, sizeof(dest));
+					
+					decl String:sLocalBase[64], String:sPluginBase[64];
+					GetPathBasename(dest, sLocalBase, sizeof(sLocalBase));
+					GetPathBasename(sFilename, sPluginBase, sizeof(sPluginBase));
+					
+					if (StrEqual(sLocalBase, sPluginBase))
+					{
+						StripPathFilename(dest);
+						Format(dest, sizeof(dest), "%s/%s", dest, sFilename);
+					}
+					
+					// Save the file location for later.
 					PushArrayString(hFiles, dest);
 					
 					// Add temporary file extension.
