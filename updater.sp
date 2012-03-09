@@ -10,7 +10,7 @@
 
 /* Plugin Info */
 #define PLUGIN_NAME 		"Updater"
-#define PLUGIN_VERSION 		"1.1.3"
+#define PLUGIN_VERSION 		"1.1.4"
 
 public Plugin:myinfo =
 {
