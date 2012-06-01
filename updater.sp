@@ -78,6 +78,7 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	// Socket
 	MarkNativeAsOptional("SocketCreate");
 	MarkNativeAsOptional("SocketSetArg");
+	MarkNativeAsOptional("SocketSetOption");
 	MarkNativeAsOptional("SocketConnect");
 	MarkNativeAsOptional("SocketSend");
 	
