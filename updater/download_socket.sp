@@ -18,18 +18,20 @@ Download_Socket(const String:url[], const String:dest[])
 	FormatEx(sRequest, sizeof(sRequest), "GET %s/%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n", location, filename, hostname);
 	
 	new Handle:hDLPack = CreateDataPack();
-	WritePackCell(hDLPack, _:hFile);
-	WritePackString(hDLPack, sRequest);
+	WritePackCell(hDLPack, 0);			// 0 - bParsedHeader
+	WritePackCell(hDLPack, _:hFile);	// 8
+	WritePackString(hDLPack, sRequest);	// 16
 	
 	new Handle:socket = SocketCreate(SOCKET_TCP, OnSocketError);
 	SocketSetArg(socket, hDLPack);
+	SocketSetOption(socket, ConcatenateCallbacks, 4096);
 	SocketConnect(socket, OnSocketConnected, OnSocketReceive, OnSocketDisconnected, hostname, 80);
 }
 
 public OnSocketConnected(Handle:socket, any:hDLPack)
 {
 	decl String:sRequest[MAX_URL_LENGTH+128];
-	SetPackPosition(hDLPack, 8);
+	SetPackPosition(hDLPack, 16);
 	ReadPackString(hDLPack, sRequest, sizeof(sRequest));
 	
 	SocketSend(socket, sRequest);
@@ -37,22 +39,37 @@ public OnSocketConnected(Handle:socket, any:hDLPack)
 
 public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 {
-	ResetPack(hDLPack);
+	new idx = 0;
+	
+	// Check if the HTTP header has already been parsed.
+	SetPackPosition(hDLPack, 0);
+	new bool:bParsedHeader = bool:ReadPackCell(hDLPack);
+	
+	if (!bParsedHeader)
+	{
+		// Parse and skip header data.
+		if ((idx = StrContains(data, "\r\n\r\n")) == -1)
+			idx = 0;
+		else
+			idx += 4;
+		
+		SetPackPosition(hDLPack, 0);
+		WritePackCell(hDLPack, 1);	// bParsedHeader
+	}
+	
+	// Write data to file.
+	SetPackPosition(hDLPack, 8);
 	new Handle:hFile = Handle:ReadPackCell(hDLPack);
 	
-	// Skip the header data.
-	new pos = StrContains(data, "\r\n\r\n");
-	pos = (pos != -1) ? pos + 4 : 0;
-	
-	for (new i = pos; i < size; i++)
+	while (idx < size)
 	{
-		WriteFileCell(hFile, data[i], 1);
+		WriteFileCell(hFile, data[idx++], 1);
 	}
 }
 
 public OnSocketDisconnected(Handle:socket, any:hDLPack)
 {
-	ResetPack(hDLPack);
+	SetPackPosition(hDLPack, 8);
 	CloseHandle(Handle:ReadPackCell(hDLPack));	// hFile
 	CloseHandle(hDLPack);
 	CloseHandle(socket);
@@ -62,7 +79,7 @@ public OnSocketDisconnected(Handle:socket, any:hDLPack)
 
 public OnSocketError(Handle:socket, const errorType, const errorNum, any:hDLPack)
 {
-	ResetPack(hDLPack);
+	SetPackPosition(hDLPack, 8);
 	CloseHandle(Handle:ReadPackCell(hDLPack));	// hFile
 	CloseHandle(hDLPack);
 	CloseHandle(socket);
