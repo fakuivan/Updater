@@ -10,7 +10,7 @@
 
 /* Plugin Info */
 #define PLUGIN_NAME 		"Updater"
-#define PLUGIN_VERSION 		"1.1.5"
+#define PLUGIN_VERSION 		"1.1.6"
 
 public Plugin:myinfo =
 {
@@ -22,7 +22,7 @@ public Plugin:myinfo =
 };
 
 /* Globals */
-//#define DEBUG		// This will enable verbose logging. Useful for developers testing their updates.
+#define DEBUG		// This will enable verbose logging. Useful for developers testing their updates.
 
 #define CURL_AVAILABLE()		(GetFeatureStatus(FeatureType_Native, "curl_easy_init") == FeatureStatus_Available)
 #define SOCKET_AVAILABLE()		(GetFeatureStatus(FeatureType_Native, "SocketCreate") == FeatureStatus_Available)
@@ -137,17 +137,7 @@ public OnPluginStart()
 public OnAllPluginsLoaded()
 {
 	// Check for updates on startup.
-	CreateTimer(10.0, Timer_FirstUpdate);
-}
-
-public Action:Timer_FirstUpdate(Handle:timer)
-{
-	if (g_fLastUpdate == 0.0)
-	{
-		TriggerTimer(g_hUpdateTimer, true);
-	}
-	
-	return Plugin_Stop;
+	TriggerTimer(g_hUpdateTimer, true);
 }
 
 public Action:Timer_CheckUpdates(Handle:timer)
