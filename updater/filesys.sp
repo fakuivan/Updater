@@ -164,15 +164,25 @@ bool:ParseUpdateFile(index, const String:path[])
 	
 	// Check if we have the latest version.
 	decl String:sCurrentVersion[16], String:sFilename[64];
-	GetPluginInfo(hPlugin, PlInfo_Version, sCurrentVersion, sizeof(sCurrentVersion));
+	
+	if (!GetPluginInfo(hPlugin, PlInfo_Version, sCurrentVersion, sizeof(sCurrentVersion)))
+	{
+		strcopy(sCurrentVersion, sizeof(sCurrentVersion), "Null");
+	}
 	
 	if (!StrEqual(sCurrentVersion, kvLatestVersion))
 	{
 		decl String:sName[64];
 		GetPluginFilename(hPlugin, sFilename, sizeof(sFilename));
-		GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName));
 		
-		Updater_Log("Update available for \"%s\" (%s). Current: %s - Latest: %s", sName, sFilename, sCurrentVersion, kvLatestVersion);
+		if (GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName)))
+		{
+			Updater_Log("Update available for \"%s\" (%s). Current: %s - Latest: %s", sName, sFilename, sCurrentVersion, kvLatestVersion);
+		}
+		else
+		{
+			Updater_Log("Update available for \"%s\". Current: %s - Latest: %s", sFilename, sCurrentVersion, kvLatestVersion);
+		}
 		
 		new maxNotes = GetArraySize(hNotes);
 		for (new i = 0; i < maxNotes; i++)
