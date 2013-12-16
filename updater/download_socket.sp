@@ -3,6 +3,9 @@
 
 Download_Socket(const String:url[], const String:dest[])
 {
+	decl String:sURL[MAX_URL_LENGTH];
+	PrefixURL(sURL, sizeof(sURL), url);
+	
 	new Handle:hFile = OpenFile(dest, "wb");
 	
 	if (hFile == INVALID_HANDLE)
@@ -14,7 +17,7 @@ Download_Socket(const String:url[], const String:dest[])
 	
 	// Format HTTP GET method.
 	decl String:hostname[64], String:location[128], String:filename[64], String:sRequest[MAX_URL_LENGTH+128];
-	ParseURL(url, hostname, sizeof(hostname), location, sizeof(location), filename, sizeof(filename));
+	ParseURL(sURL, hostname, sizeof(hostname), location, sizeof(location), filename, sizeof(filename));
 	FormatEx(sRequest, sizeof(sRequest), "GET %s/%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n", location, filename, hostname);
 	
 	new Handle:hDLPack = CreateDataPack();
@@ -47,11 +50,68 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 	
 	if (!bParsedHeader)
 	{
-		// Parse and skip header data.
+		// Parse header data.
 		if ((idx = StrContains(data, "\r\n\r\n")) == -1)
+		{
 			idx = 0;
+		}
 		else
+		{
+			if (strncmp(data, "HTTP/", 5) == 0)
+			{
+				// Check for location header.
+				new idx2 = StrContains(data, "\nLocation: ", false);
+				
+				if (idx2 > -1 && idx2 < idx)
+				{
+					// skip to url
+					idx2 += 11;
+					
+					decl String:sURL[MAX_URL_LENGTH];
+					strcopy(sURL, (FindCharInString(data[idx2], '\r') + 1), data[idx2]);
+					
+					PrefixURL(sURL, sizeof(sURL), sURL);
+					
+					#if defined DEBUG
+						Updater_DebugLog("  [ ]  Redirected: %s", sURL);
+					#endif
+					
+					decl String:hostname[64], String:location[128], String:filename[64], String:sRequest[MAX_URL_LENGTH+128];
+					ParseURL(sURL, hostname, sizeof(hostname), location, sizeof(location), filename, sizeof(filename));
+					FormatEx(sRequest, sizeof(sRequest), "GET %s/%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n", location, filename, hostname);
+					
+					SetPackPosition(hDLPack, 16); // sRequest
+					WritePackString(hDLPack, sRequest);
+					
+					new Handle:newSocket = SocketCreate(SOCKET_TCP, OnSocketError);
+					SocketSetArg(newSocket, hDLPack);
+					SocketSetOption(newSocket, ConcatenateCallbacks, 4096);
+					SocketConnect(newSocket, OnSocketConnected, OnSocketReceive, OnSocketDisconnected, hostname, 80);
+					
+					CloseHandle(socket);
+					return;
+				}
+				
+				// Check HTTP status code
+				decl String:sStatusCode[64];
+				strcopy(sStatusCode, (FindCharInString(data, '\r') - 8), data[9]);
+				
+				if (strncmp(sStatusCode, "200", 3) != 0)
+				{
+					SetPackPosition(hDLPack, 8);
+					CloseHandle(Handle:ReadPackCell(hDLPack));	// hFile
+					CloseHandle(hDLPack);
+					CloseHandle(socket);
+				
+					decl String:sError[256];
+					FormatEx(sError, sizeof(sError), "Socket error: %s", sStatusCode);
+					DownloadEnded(false, sError);
+					return;
+				}
+			}
+			
 			idx += 4;
+		}
 		
 		SetPackPosition(hDLPack, 0);
 		WritePackCell(hDLPack, 1);	// bParsedHeader
