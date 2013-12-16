@@ -163,7 +163,11 @@ DownloadEnded(bool:successful, const String:error[]="")
 					FinalizeDownload(index);
 					
 					decl String:sName[64];
-					GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName));
+					if (!GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName)))
+					{
+						strcopy(sName, sizeof(sName), "Null");
+					}
+					
 					Updater_Log("Successfully updated and installed \"%s\".", sName);
 					
 					Updater_SetStatus(index, Status_Updated);
