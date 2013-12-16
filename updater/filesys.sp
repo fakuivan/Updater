@@ -25,9 +25,9 @@ GetPathBasename(String:path[], String:buffer[], maxlength)
 // Add http protocol to url if it's missing.
 PrefixURL(String:buffer[], maxlength, const String:url[])
 {
-	if (strncmp(url, "http://", 7) != 0)
+	if (strncmp(url, "http://", 7) != 0 && strncmp(url, "https://", 8) != 0)
 	{
-		FormatEx(buffer, maxlength, "http://%s", url);
+		Format(buffer, maxlength, "http://%s", url);
 	}
 	else
 	{
