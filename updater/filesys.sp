@@ -59,8 +59,8 @@ ParseURL(const String:url[], String:host[], maxHost, String:location[], maxLoc, 
 	Format(filename, maxName, "%s", dirs[total-1]);
 }
 
-// Converts Updater KV file paths into paths relative to the game folder.
-ParseKVPathForLocal(const String:path[], String:buffer[], maxlength)
+// Converts Updater SMC file paths into paths relative to the game folder.
+ParseSMCPathForLocal(const String:path[], String:buffer[], maxlength)
 {
 	decl String:dirs[16][64];
 	new total = ExplodeString(path, "/", dirs, sizeof(dirs), sizeof(dirs[]));
@@ -89,8 +89,8 @@ ParseKVPathForLocal(const String:path[], String:buffer[], maxlength)
 	Format(buffer, maxlength, "%s%s", buffer, dirs[total-1]);
 }
 
-// Converts Updater KV file paths into paths relative to the plugin's update URL.
-ParseKVPathForDownload(const String:path[], String:buffer[], maxlength)
+// Converts Updater SMC file paths into paths relative to the plugin's update URL.
+ParseSMCPathForDownload(const String:path[], String:buffer[], maxlength)
 {
 	decl String:dirs[16][64];
 	new total = ExplodeString(path, "/", dirs, sizeof(dirs), sizeof(dirs[]));
@@ -106,161 +106,276 @@ ParseKVPathForDownload(const String:path[], String:buffer[], maxlength)
 // Parses a plugin's update file.
 // Logs update notes and begins download if required.
 // Returns true if an update was available.
+new Handle:g_SMCSections;
+new Handle:g_SMCDataTrie;
+new Handle:g_SMCDataPack;
+new g_iSMCLine;
+
 bool:ParseUpdateFile(index, const String:path[])
 {
 	/* Return true if an update was available. */
-	new Handle:kv = CreateKeyValues("Updater");
+	g_SMCSections = CreateArray(64);
+	g_SMCDataTrie = CreateTrie();
+	g_SMCDataPack = CreateDataPack();
+	g_iSMCLine = 0;
 	
-	if (!FileToKeyValues(kv, path))
-	{
-		CloseHandle(kv);
-		return false;
-	}
+	new Handle:smc = SMC_CreateParser();
 	
-	decl String:kvLatestVersion[16], String:kvPrevVersion[16], String:sBuffer[MAX_URL_LENGTH];
+	SMC_SetRawLine(smc, Updater_RawLine);
+	SMC_SetReaders(smc, Updater_NewSection, Updater_KeyValue, Updater_EndSection);
+	
+	decl String:sBuffer[MAX_URL_LENGTH], Handle:hPack;
 	new bool:bUpdate = false;
+	new SMCError:err = SMC_ParseFile(smc, path);
 	
-	new Handle:hNotes = CreateArray(192);
-	new Handle:hPlugin = IndexToPlugin(index);
-	new Handle:hFiles = Updater_GetFiles(index);
-	ClearArray(hFiles);
-	
-	// Get update information.
-	if (KvJumpToKey(kv, "Information"))
+	if (err == SMCError_Okay)
 	{
-		// Version info.
-		if (KvJumpToKey(kv, "Version"))
+		// Initialize data
+		new Handle:hPlugin = IndexToPlugin(index);
+		new Handle:hFiles = Updater_GetFiles(index);
+		ClearArray(hFiles);
+		
+		// current version.
+		decl String:sCurrentVersion[16];
+		
+		if (!GetPluginInfo(hPlugin, PlInfo_Version, sCurrentVersion, sizeof(sCurrentVersion)))
 		{
-			KvGetString(kv, "Latest", kvLatestVersion, sizeof(kvLatestVersion));
-			KvGetString(kv, "Previous", kvPrevVersion, sizeof(kvPrevVersion));
-			KvGoBack(kv);
+			strcopy(sCurrentVersion, sizeof(sCurrentVersion), "Null");
 		}
 		
-		// Update notes.
-		if (KvGotoFirstSubKey(kv, false))
+		// latest version.
+		new String:smcLatestVersion[16];
+		
+		if (GetTrieValue(g_SMCDataTrie, "version->latest", hPack))
 		{
-			do
+			ResetPack(hPack);
+			ReadPackString(hPack, smcLatestVersion, sizeof(smcLatestVersion));
+		}
+		
+		// Check if we have the latest version.
+		if (!StrEqual(sCurrentVersion, smcLatestVersion))
+		{
+			decl String:sFilename[64], String:sName[64];
+			GetPluginFilename(hPlugin, sFilename, sizeof(sFilename));
+			
+			if (GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName)))
 			{
-				KvGetSectionName(kv, sBuffer, sizeof(sBuffer));
+				Updater_Log("Update available for \"%s\" (%s). Current: %s - Latest: %s", sName, sFilename, sCurrentVersion, smcLatestVersion);
+			}
+			else
+			{
+				Updater_Log("Update available for \"%s\". Current: %s - Latest: %s", sFilename, sCurrentVersion, smcLatestVersion);
+			}
+			
+			if (GetTrieValue(g_SMCDataTrie, "information->notes", hPack))
+			{
+				ResetPack(hPack);
 				
-				if (StrEqual(sBuffer, "Notes"))
+				new iCount = 0;
+				while (IsPackReadable(hPack, 1))
 				{
-					KvGetString(kv, NULL_STRING, sBuffer, sizeof(sBuffer));
-					PushArrayString(hNotes, sBuffer);				
+					ReadPackString(hPack, sBuffer, sizeof(sBuffer));
+					Updater_Log("  [%i]  %s", iCount++, sBuffer);
+				}
+			}
+			
+			// Log update notes, save file list, and begin downloading.
+			if (g_bGetDownload && Fwd_OnPluginDownloading(hPlugin) == Plugin_Continue)
+			{
+				// Get previous version.
+				new String:smcPrevVersion[16];
+				if (GetTrieValue(g_SMCDataTrie, "version->previous", hPack))
+				{
+					ResetPack(hPack);
+					ReadPackString(hPack, smcPrevVersion, sizeof(smcPrevVersion));
 				}
 				
-			} while (KvGotoNextKey(kv, false));
-			KvGoBack(kv);
+				// Check if we only need the patch files.
+				if (StrEqual(sCurrentVersion, smcPrevVersion) && GetTrieValue(g_SMCDataTrie, "patch->plugin", hPack))
+				{
+					ParseSMCFilePack(index, hPack, hFiles);
+					
+					if (g_bGetSource && GetTrieValue(g_SMCDataTrie, "patch->source", hPack))
+					{
+						ParseSMCFilePack(index, hPack, hFiles);
+					}
+				}
+				else if (GetTrieValue(g_SMCDataTrie, "files->plugin", hPack))
+				{
+					ParseSMCFilePack(index, hPack, hFiles);
+					
+					if (g_bGetSource && GetTrieValue(g_SMCDataTrie, "files->source", hPack))
+					{
+						ParseSMCFilePack(index, hPack, hFiles);
+					}
+				}
+				
+				Updater_SetStatus(index, Status_Downloading);
+			}
+			else
+			{
+				// We don't want to spam the logs with the same update notification.
+				Updater_SetStatus(index, Status_Updated);
+			}
+			
+			bUpdate = true;
 		}
 		
-		KvGoBack(kv);
+#if defined DEBUG
+		new iCount = 0;
+		
+		Updater_DebugLog("\n");
+		Updater_DebugLog("SMC DEBUG");
+		ResetPack(g_SMCDataPack);
+		
+		while (IsPackReadable(g_SMCDataPack, 1))
+		{
+			ReadPackString(g_SMCDataPack, sBuffer, sizeof(sBuffer));
+			Updater_DebugLog("%s", sBuffer);
+			
+			if (GetTrieValue(g_SMCDataTrie, sBuffer, hPack))
+			{
+				iCount = 0;
+				ResetPack(hPack);
+				
+				while (IsPackReadable(hPack, 1))
+				{
+					ReadPackString(hPack, sBuffer, sizeof(sBuffer));
+					Updater_DebugLog("  [%i]  %s", iCount++, sBuffer);
+				}
+			}
+		}
+		Updater_DebugLog("END SMC DEBUG\n");
+#endif
 	}
 	else
 	{
-		CloseHandle(hNotes);
-		CloseHandle(kv);
-		return false;
+		Updater_Log("SMC parsing error on line %d", g_iSMCLine);
+		
+		Updater_GetURL(index, sBuffer, sizeof(sBuffer));
+		Updater_Log("  [0]  URL: %s", sBuffer);
+		
+		if (SMC_GetErrorString(err, sBuffer, sizeof(sBuffer)))
+		{
+			Updater_Log("  [1]  ERROR: %s", sBuffer);
+		}
 	}
 	
-	// Check if we have the latest version.
-	decl String:sCurrentVersion[16], String:sFilename[64];
+	// Clean up SMC data.
+	ResetPack(g_SMCDataPack);
 	
-	if (!GetPluginInfo(hPlugin, PlInfo_Version, sCurrentVersion, sizeof(sCurrentVersion)))
+	while (IsPackReadable(g_SMCDataPack, 1))
 	{
-		strcopy(sCurrentVersion, sizeof(sCurrentVersion), "Null");
+		ReadPackString(g_SMCDataPack, sBuffer, sizeof(sBuffer));
+		
+		if (GetTrieValue(g_SMCDataTrie, sBuffer, hPack))
+		{
+			CloseHandle(hPack);
+		}
 	}
 	
-	if (!StrEqual(sCurrentVersion, kvLatestVersion))
-	{
-		decl String:sName[64];
-		GetPluginFilename(hPlugin, sFilename, sizeof(sFilename));
-		
-		if (GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName)))
-		{
-			Updater_Log("Update available for \"%s\" (%s). Current: %s - Latest: %s", sName, sFilename, sCurrentVersion, kvLatestVersion);
-		}
-		else
-		{
-			Updater_Log("Update available for \"%s\". Current: %s - Latest: %s", sFilename, sCurrentVersion, kvLatestVersion);
-		}
-		
-		new maxNotes = GetArraySize(hNotes);
-		for (new i = 0; i < maxNotes; i++)
-		{
-			GetArrayString(hNotes, i, sBuffer, sizeof(sBuffer));
-			Updater_Log("  [%i]  %s", i, sBuffer);
-		}
-		
-		bUpdate = true;
-	}
-	
-	// Log update notes, save file list, and begin downloading.
-	if (bUpdate && g_bGetDownload && Fwd_OnPluginDownloading(hPlugin) == Plugin_Continue)
-	{
-		// Prepare URL
-		decl String:urlprefix[MAX_URL_LENGTH], String:url[MAX_URL_LENGTH], String:dest[PLATFORM_MAX_PATH];
-		Updater_GetURL(index, urlprefix, sizeof(urlprefix));
-		StripPathFilename(urlprefix);
-		
-		// Get all files needed for download.
-		KvJumpToKey(kv, "Files");
-		
-		// Check if we only need the patch files.
-		if (StrEqual(sCurrentVersion, kvPrevVersion))
-		{
-			KvJumpToKey(kv, "Patch");
-		}
-		
-		if (KvGotoFirstSubKey(kv, false))
-		{
-			do
-			{
-				KvGetSectionName(kv, sBuffer, sizeof(sBuffer));
-				
-				if (StrEqual(sBuffer, "Plugin") || (g_bGetSource && StrEqual(sBuffer, "Source")))
-				{
-					KvGetString(kv, NULL_STRING, sBuffer, sizeof(sBuffer));
-					
-					// Merge url.
-					ParseKVPathForDownload(sBuffer, url, sizeof(url));
-					Format(url, sizeof(url), "%s%s", urlprefix, url);
-					
-					// Make sure the current plugin path matches the update.
-					ParseKVPathForLocal(sBuffer, dest, sizeof(dest));
-					
-					decl String:sLocalBase[64], String:sPluginBase[64];
-					GetPathBasename(dest, sLocalBase, sizeof(sLocalBase));
-					GetPathBasename(sFilename, sPluginBase, sizeof(sPluginBase));
-					
-					if (StrEqual(sLocalBase, sPluginBase))
-					{
-						StripPathFilename(dest);
-						Format(dest, sizeof(dest), "%s/%s", dest, sFilename);
-					}
-					
-					// Save the file location for later.
-					PushArrayString(hFiles, dest);
-					
-					// Add temporary file extension.
-					Format(dest, sizeof(dest), "%s.%s", dest, TEMP_FILE_EXT);
-					
-					// Begin downloading file.
-					AddToDownloadQueue(index, url, dest);
-				}
-				
-			} while (KvGotoNextKey(kv, false));
-		}
-		
-		Updater_SetStatus(index, Status_Downloading);
-	}
-	else if (bUpdate)
-	{
-		// We don't want to spam the logs with the same update notification.
-		Updater_SetStatus(index, Status_Updated);
-	}
-	
-	CloseHandle(hNotes);
-	CloseHandle(kv);
+	CloseHandle(g_SMCSections);
+	CloseHandle(g_SMCDataTrie);
+	CloseHandle(g_SMCDataPack);
+	CloseHandle(smc);
 	
 	return bUpdate;
+}
+
+ParseSMCFilePack(index, Handle:hPack, Handle:hFiles)
+{
+	// Prepare URL
+	decl String:urlprefix[MAX_URL_LENGTH], String:url[MAX_URL_LENGTH], String:dest[PLATFORM_MAX_PATH], String:sBuffer[MAX_URL_LENGTH];
+	Updater_GetURL(index, urlprefix, sizeof(urlprefix));
+	StripPathFilename(urlprefix);
+
+	ResetPack(hPack);
+
+	while (IsPackReadable(hPack, 1))
+	{
+		ReadPackString(hPack, sBuffer, sizeof(sBuffer));
+		
+		// Merge url.
+		ParseSMCPathForDownload(sBuffer, url, sizeof(url));
+		Format(url, sizeof(url), "%s%s", urlprefix, url);
+		
+		// Make sure the current plugin path matches the update.
+		ParseSMCPathForLocal(sBuffer, dest, sizeof(dest));
+		
+		decl String:sLocalBase[64], String:sPluginBase[64], String:sFilename[64];
+		GetPathBasename(dest, sLocalBase, sizeof(sLocalBase));
+		GetPathBasename(sFilename, sPluginBase, sizeof(sPluginBase));
+		
+		if (StrEqual(sLocalBase, sPluginBase))
+		{
+			StripPathFilename(dest);
+			Format(dest, sizeof(dest), "%s/%s", dest, sFilename);
+		}
+		
+		// Save the file location for later.
+		PushArrayString(hFiles, dest);
+		
+		// Add temporary file extension.
+		Format(dest, sizeof(dest), "%s.%s", dest, TEMP_FILE_EXT);
+		
+		// Begin downloading file.
+		AddToDownloadQueue(index, url, dest);
+	}
+}
+
+public SMCResult:Updater_RawLine(Handle:smc, const String:line[], lineno)
+{
+	g_iSMCLine = lineno;
+	return SMCParse_Continue;
+}
+
+public SMCResult:Updater_NewSection(Handle:smc, const String:name[], bool:opt_quotes)
+{
+	decl String:sName[MAX_URL_LENGTH];
+	
+	strcopy(sName, sizeof(sName), name);
+	StringToLower(sName);
+	
+	PushArrayString(g_SMCSections, sName);
+	return SMCParse_Continue;
+}
+
+public SMCResult:Updater_KeyValue(Handle:smc, const String:key[], const String:value[], bool:key_quotes, bool:value_quotes)
+{
+	decl String:sCurSection[MAX_URL_LENGTH], String:sKey[MAX_URL_LENGTH], Handle:hPack;
+	
+	GetArrayString(g_SMCSections, GetArraySize(g_SMCSections)-1, sCurSection, sizeof(sCurSection));
+	strcopy(sKey, sizeof(sKey), key);
+	StringToLower(sKey);
+	Format(sKey, sizeof(sKey), "%s->%s", sCurSection, sKey);
+	
+	if (!GetTrieValue(g_SMCDataTrie, sKey, hPack))
+	{
+		hPack = CreateDataPack();
+		SetTrieValue(g_SMCDataTrie, sKey, hPack);
+		WritePackString(g_SMCDataPack, sKey);
+	}
+	
+	WritePackString(hPack, value);
+	return SMCParse_Continue;
+}
+
+public SMCResult:Updater_EndSection(Handle:smc)
+{
+	if (GetArraySize(g_SMCSections))
+	{
+		RemoveFromArray(g_SMCSections, GetArraySize(g_SMCSections)-1);
+	}
+	
+	return SMCParse_Continue;
+}
+
+stock StringToLower(String:input[])
+{
+	new length = strlen(input);
+	
+	for (new i = 0; i < length; i++)
+	{
+		input[i] = CharToLower(input[i]);
+	}
 }
