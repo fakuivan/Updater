@@ -331,12 +331,7 @@ public SMCResult:Updater_RawLine(Handle:smc, const String:line[], lineno)
 
 public SMCResult:Updater_NewSection(Handle:smc, const String:name[], bool:opt_quotes)
 {
-	decl String:sName[MAX_URL_LENGTH];
-	
-	strcopy(sName, sizeof(sName), name);
-	StringToLower(sName);
-	
-	PushArrayString(g_SMCSections, sName);
+	PushArrayString(g_SMCSections, name);
 	return SMCParse_Continue;
 }
 
@@ -345,9 +340,8 @@ public SMCResult:Updater_KeyValue(Handle:smc, const String:key[], const String:v
 	decl String:sCurSection[MAX_URL_LENGTH], String:sKey[MAX_URL_LENGTH], Handle:hPack;
 	
 	GetArrayString(g_SMCSections, GetArraySize(g_SMCSections)-1, sCurSection, sizeof(sCurSection));
-	strcopy(sKey, sizeof(sKey), key);
+	FormatEx(sKey, sizeof(sKey), "%s->%s", sCurSection, key);
 	StringToLower(sKey);
-	Format(sKey, sizeof(sKey), "%s->%s", sCurSection, sKey);
 	
 	if (!GetTrieValue(g_SMCDataTrie, sKey, hPack))
 	{
