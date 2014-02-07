@@ -64,6 +64,19 @@ ProcessDownloadQueue(bool:force=false)
 	ReadPackString(hQueuePack, url, sizeof(url));
 	ReadPackString(hQueuePack, dest, sizeof(dest));
 	
+	if (!CURL_AVAILABLE() && !SOCKET_AVAILABLE() && !STEAMTOOLS_AVAILABLE())
+	{
+		SetFailState(EXTENSION_ERROR);
+	}
+	
+#if defined DEBUG
+	Updater_DebugLog("Download started:");
+	Updater_DebugLog("  [0]  URL: %s", url);
+	Updater_DebugLog("  [1]  Destination: %s", dest);
+#endif
+	
+	g_bDownloading = true;
+	
 	if (STEAMTOOLS_AVAILABLE())
 	{
 		if (g_bSteamLoaded)
@@ -83,18 +96,6 @@ ProcessDownloadQueue(bool:force=false)
 	{
 		Download_Socket(url, dest);
 	}
-	else
-	{
-		SetFailState(EXTENSION_ERROR);
-	}
-	
-#if defined DEBUG
-	Updater_DebugLog("Download started:");
-	Updater_DebugLog("  [0]  URL: %s", url);
-	Updater_DebugLog("  [1]  Destination: %s", dest);
-#endif
-	
-	g_bDownloading = true;
 }
 
 public Action:Timer_RetryQueue(Handle:timer)
@@ -141,6 +142,13 @@ DownloadEnded(bool:successful, const String:error[]="")
 			if (!successful || !ParseUpdateFile(index, dest))
 			{
 				Updater_SetStatus(index, Status_Idle);
+				
+#if defined DEBUG
+				if (error[0] != '\0')
+				{
+					Updater_DebugLog("  [2]  %s", error);
+				}
+#endif
 			}
 		}
 		
@@ -185,7 +193,11 @@ DownloadEnded(bool:successful, const String:error[]="")
 				Updater_Log("Error downloading update for plugin: %s", filename);
 				Updater_Log("  [0]  URL: %s", url);
 				Updater_Log("  [1]  Destination: %s", dest);
-				Updater_Log("  [2]  %s", error);
+				
+				if (error[0] != '\0')
+				{
+					Updater_Log("  [2]  %s", error);
+				}
 			}
 		}
 		

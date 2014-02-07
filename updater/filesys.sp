@@ -224,7 +224,7 @@ bool:ParseUpdateFile(index, const String:path[])
 #if defined DEBUG
 		new iCount = 0;
 		
-		Updater_DebugLog("\n");
+		Updater_DebugLog(" ");
 		Updater_DebugLog("SMC DEBUG");
 		ResetPack(g_SMCDataPack);
 		
@@ -245,7 +245,8 @@ bool:ParseUpdateFile(index, const String:path[])
 				}
 			}
 		}
-		Updater_DebugLog("END SMC DEBUG\n");
+		Updater_DebugLog("END SMC DEBUG");
+		Updater_DebugLog(" ");
 #endif
 	}
 	else

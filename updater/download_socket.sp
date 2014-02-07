@@ -1,10 +1,20 @@
 
 /* Extension Helper - Socket */
 
+#define MAX_REDIRECTS 5
+
 Download_Socket(const String:url[], const String:dest[])
 {
 	decl String:sURL[MAX_URL_LENGTH];
 	PrefixURL(sURL, sizeof(sURL), url);
+	
+	if (strncmp(sURL, "https://", 8) == 0)
+	{
+		decl String:sError[256];
+		FormatEx(sError, sizeof(sError), "Socket does not support HTTPs (URL: %s).", sURL);
+		DownloadEnded(false, sError);
+		return;
+	}
 	
 	new Handle:hFile = OpenFile(dest, "wb");
 	
@@ -23,8 +33,9 @@ Download_Socket(const String:url[], const String:dest[])
 	
 	new Handle:hDLPack = CreateDataPack();
 	WritePackCell(hDLPack, 0);			// 0 - bParsedHeader
-	WritePackCell(hDLPack, _:hFile);	// 8
-	WritePackString(hDLPack, sRequest);	// 16
+	WritePackCell(hDLPack, 0);			// 8 - iRedirects
+	WritePackCell(hDLPack, _:hFile);	// 16
+	WritePackString(hDLPack, sRequest);	// 24
 	
 	new Handle:socket = SocketCreate(SOCKET_TCP, OnSocketError);
 	SocketSetArg(socket, hDLPack);
@@ -35,7 +46,7 @@ Download_Socket(const String:url[], const String:dest[])
 public OnSocketConnected(Handle:socket, any:hDLPack)
 {
 	decl String:sRequest[MAX_URL_LENGTH+128];
-	SetPackPosition(hDLPack, 16);
+	SetPackPosition(hDLPack, 24);
 	ReadPackString(hDLPack, sRequest, sizeof(sRequest));
 	
 	SocketSend(socket, sRequest);
@@ -48,6 +59,7 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 	// Check if the HTTP header has already been parsed.
 	SetPackPosition(hDLPack, 0);
 	new bool:bParsedHeader = bool:ReadPackCell(hDLPack);
+	new iRedirects = ReadPackCell(hDLPack);
 	
 	if (!bParsedHeader)
 	{
@@ -65,6 +77,18 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 				
 				if (idx2 > -1 && idx2 < idx)
 				{
+					if (++iRedirects > MAX_REDIRECTS)
+					{
+						CloseSocketHandles(socket, hDLPack);
+						DownloadEnded(false, "Socket error: too many redirects.");
+						return;
+					}
+					else
+					{
+						SetPackPosition(hDLPack, 8);
+						WritePackCell(hDLPack, iRedirects);
+					}
+				
 					// skip to url
 					idx2 += 11;
 					
@@ -73,15 +97,25 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 					
 					PrefixURL(sURL, sizeof(sURL), sURL);
 					
-					#if defined DEBUG
-						Updater_DebugLog("  [ ]  Redirected: %s", sURL);
-					#endif
+#if defined DEBUG
+					Updater_DebugLog("  [ ]  Redirected: %s", sURL);
+#endif
+					
+					if (strncmp(sURL, "https://", 8) == 0)
+					{
+						CloseSocketHandles(socket, hDLPack);
+						
+						decl String:sError[256];
+						FormatEx(sError, sizeof(sError), "Socket does not support HTTPs (URL: %s).", sURL);
+						DownloadEnded(false, sError);
+						return;
+					}
 					
 					decl String:hostname[64], String:location[128], String:filename[64], String:sRequest[MAX_URL_LENGTH+128];
 					ParseURL(sURL, hostname, sizeof(hostname), location, sizeof(location), filename, sizeof(filename));
 					FormatEx(sRequest, sizeof(sRequest), "GET %s/%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n", location, filename, hostname);
 					
-					SetPackPosition(hDLPack, 16); // sRequest
+					SetPackPosition(hDLPack, 24); // sRequest
 					WritePackString(hDLPack, sRequest);
 					
 					new Handle:newSocket = SocketCreate(SOCKET_TCP, OnSocketError);
@@ -99,10 +133,7 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 				
 				if (strncmp(sStatusCode, "200", 3) != 0)
 				{
-					SetPackPosition(hDLPack, 8);
-					CloseHandle(Handle:ReadPackCell(hDLPack));	// hFile
-					CloseHandle(hDLPack);
-					CloseHandle(socket);
+					CloseSocketHandles(socket, hDLPack);
 				
 					decl String:sError[256];
 					FormatEx(sError, sizeof(sError), "Socket error: %s", sStatusCode);
@@ -119,7 +150,7 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 	}
 	
 	// Write data to file.
-	SetPackPosition(hDLPack, 8);
+	SetPackPosition(hDLPack, 16);
 	new Handle:hFile = Handle:ReadPackCell(hDLPack);
 	
 	while (idx < size)
@@ -130,22 +161,24 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 
 public OnSocketDisconnected(Handle:socket, any:hDLPack)
 {
-	SetPackPosition(hDLPack, 8);
-	CloseHandle(Handle:ReadPackCell(hDLPack));	// hFile
-	CloseHandle(hDLPack);
-	CloseHandle(socket);
+	CloseSocketHandles(socket, hDLPack);
 	
 	DownloadEnded(true);
 }
 
 public OnSocketError(Handle:socket, const errorType, const errorNum, any:hDLPack)
 {
-	SetPackPosition(hDLPack, 8);
-	CloseHandle(Handle:ReadPackCell(hDLPack));	// hFile
-	CloseHandle(hDLPack);
-	CloseHandle(socket);
+	CloseSocketHandles(socket, hDLPack);
 
 	decl String:sError[256];
 	FormatEx(sError, sizeof(sError), "Socket error: %d (Error code %d)", errorType, errorNum);
 	DownloadEnded(false, sError);
+}
+
+CloseSocketHandles(Handle:socket, Handle:hDLPack)
+{
+	SetPackPosition(hDLPack, 16);
+	CloseHandle(Handle:ReadPackCell(hDLPack));	// hFile
+	CloseHandle(hDLPack);
+	CloseHandle(socket);
 }
