@@ -5,6 +5,8 @@
 #include "updater/download_socket.sp"
 #include "updater/download_steamtools.sp"
 
+static QueuePack_URL = 0;
+
 FinalizeDownload(index)
 {
 	/* Strip the temporary file extension from downloaded files. */
@@ -58,7 +60,7 @@ ProcessDownloadQueue(bool:force=false)
 	}
 	
 	new Handle:hQueuePack = GetArrayCell(g_hDownloadQueue, 0);
-	SetPackPosition(hQueuePack, 9);
+	SetPackPosition(hQueuePack, QueuePack_URL);
 	
 	decl String:url[MAX_URL_LENGTH], String:dest[PLATFORM_MAX_PATH];
 	ReadPackString(hQueuePack, url, sizeof(url));
@@ -109,6 +111,8 @@ AddToDownloadQueue(index, const String:url[], const String:dest[])
 {
 	new Handle:hQueuePack = CreateDataPack();
 	WritePackCell(hQueuePack, index);
+	
+	QueuePack_URL = GetPackPosition(hQueuePack);
 	WritePackString(hQueuePack, url);
 	WritePackString(hQueuePack, dest);
 	
