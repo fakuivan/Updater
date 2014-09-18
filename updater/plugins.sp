@@ -1,6 +1,11 @@
 
 /* PluginPack Helpers */
 
+static PluginPack_Plugin = 0;
+static PluginPack_Files = 0;
+static PluginPack_Status = 0;
+static PluginPack_URL = 0;
+
 GetMaxPlugins()
 {
 	return GetArraySize(g_hPluginPacks);
@@ -33,7 +38,7 @@ PluginToIndex(Handle:plugin)
 	for (new i = 0; i < maxPlugins; i++)
 	{
 		hPluginPack = GetArrayCell(g_hPluginPacks, i);
-		ResetPack(hPluginPack);
+		SetPackPosition(hPluginPack, PluginPack_Plugin);
 		
 		if (plugin == Handle:ReadPackCell(hPluginPack))
 		{
@@ -47,7 +52,7 @@ PluginToIndex(Handle:plugin)
 Handle:IndexToPlugin(index)
 {
 	new Handle:hPluginPack = GetArrayCell(g_hPluginPacks, index);
-	ResetPack(hPluginPack);
+	SetPackPosition(hPluginPack, PluginPack_Plugin);
 	return Handle:ReadPackCell(hPluginPack);
 }
 
@@ -76,9 +81,16 @@ Updater_AddPlugin(Handle:plugin, const String:url[])
 		new Handle:hPluginPack = CreateDataPack();
 		new Handle:hFiles = CreateArray(PLATFORM_MAX_PATH);
 		
+		PluginPack_Plugin = GetPackPosition(hPluginPack);
 		WritePackCell(hPluginPack, _:plugin);
+		
+		PluginPack_Files = GetPackPosition(hPluginPack);
 		WritePackCell(hPluginPack, _:hFiles);
+		
+		PluginPack_Status = GetPackPosition(hPluginPack);
 		WritePackCell(hPluginPack, _:Status_Idle);
+		
+		PluginPack_URL = GetPackPosition(hPluginPack);
 		WritePackString(hPluginPack, url);
 		
 		PushArrayCell(g_hPluginPacks, hPluginPack);
@@ -113,35 +125,35 @@ Updater_RemovePlugin(index)
 Handle:Updater_GetFiles(index)
 {
 	new Handle:hPluginPack = GetArrayCell(g_hPluginPacks, index);
-	SetPackPosition(hPluginPack, 9);
+	SetPackPosition(hPluginPack, PluginPack_Files);
 	return Handle:ReadPackCell(hPluginPack);
 }
 
 UpdateStatus:Updater_GetStatus(index)
 {
 	new Handle:hPluginPack = GetArrayCell(g_hPluginPacks, index);
-	SetPackPosition(hPluginPack, 18);
+	SetPackPosition(hPluginPack, PluginPack_Status);
 	return UpdateStatus:ReadPackCell(hPluginPack);
 }
 
 Updater_SetStatus(index, UpdateStatus:status)
 {
 	new Handle:hPluginPack = GetArrayCell(g_hPluginPacks, index);
-	SetPackPosition(hPluginPack, 18);
+	SetPackPosition(hPluginPack, PluginPack_Status);
 	WritePackCell(hPluginPack, _:status);
 }
 
 Updater_GetURL(index, String:buffer[], size)
 {
 	new Handle:hPluginPack = GetArrayCell(g_hPluginPacks, index);
-	SetPackPosition(hPluginPack, 27);
+	SetPackPosition(hPluginPack, PluginPack_URL);
 	ReadPackString(hPluginPack, buffer, size);
 }
 
 Updater_SetURL(index, const String:url[])
 {
 	new Handle:hPluginPack = GetArrayCell(g_hPluginPacks, index);
-	SetPackPosition(hPluginPack, 27);
+	SetPackPosition(hPluginPack, PluginPack_URL);
 	WritePackString(hPluginPack, url);
 }
 
