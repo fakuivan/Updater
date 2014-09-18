@@ -33,9 +33,9 @@ Download_Socket(const String:url[], const String:dest[])
 	
 	new Handle:hDLPack = CreateDataPack();
 	WritePackCell(hDLPack, 0);			// 0 - bParsedHeader
-	WritePackCell(hDLPack, 0);			// 8 - iRedirects
-	WritePackCell(hDLPack, _:hFile);	// 16
-	WritePackString(hDLPack, sRequest);	// 24
+	WritePackCell(hDLPack, 0);			// 9 - iRedirects
+	WritePackCell(hDLPack, _:hFile);	// 18
+	WritePackString(hDLPack, sRequest);	// 27
 	
 	new Handle:socket = SocketCreate(SOCKET_TCP, OnSocketError);
 	SocketSetArg(socket, hDLPack);
@@ -46,7 +46,7 @@ Download_Socket(const String:url[], const String:dest[])
 public OnSocketConnected(Handle:socket, any:hDLPack)
 {
 	decl String:sRequest[MAX_URL_LENGTH+128];
-	SetPackPosition(hDLPack, 24);
+	SetPackPosition(hDLPack, 27);
 	ReadPackString(hDLPack, sRequest, sizeof(sRequest));
 	
 	SocketSend(socket, sRequest);
@@ -88,7 +88,7 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 				}
 				else
 				{
-					SetPackPosition(hDLPack, 8);
+					SetPackPosition(hDLPack, 9);
 					WritePackCell(hDLPack, iRedirects);
 				}
 			
@@ -118,7 +118,7 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 				ParseURL(sURL, hostname, sizeof(hostname), location, sizeof(location), filename, sizeof(filename));
 				FormatEx(sRequest, sizeof(sRequest), "GET %s/%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n", location, filename, hostname);
 				
-				SetPackPosition(hDLPack, 24); // sRequest
+				SetPackPosition(hDLPack, 27); // sRequest
 				WritePackString(hDLPack, sRequest);
 				
 				new Handle:newSocket = SocketCreate(SOCKET_TCP, OnSocketError);
@@ -150,7 +150,7 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 	}
 	
 	// Write data to file.
-	SetPackPosition(hDLPack, 16);
+	SetPackPosition(hDLPack, 18);
 	new Handle:hFile = Handle:ReadPackCell(hDLPack);
 	
 	while (idx < size)
@@ -177,7 +177,7 @@ public OnSocketError(Handle:socket, const errorType, const errorNum, any:hDLPack
 
 CloseSocketHandles(Handle:socket, Handle:hDLPack)
 {
-	SetPackPosition(hDLPack, 16);
+	SetPackPosition(hDLPack, 18);
 	CloseHandle(Handle:ReadPackCell(hDLPack));	// hFile
 	CloseHandle(hDLPack);
 	CloseHandle(socket);

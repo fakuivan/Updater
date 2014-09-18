@@ -113,35 +113,35 @@ Updater_RemovePlugin(index)
 Handle:Updater_GetFiles(index)
 {
 	new Handle:hPluginPack = GetArrayCell(g_hPluginPacks, index);
-	SetPackPosition(hPluginPack, 8);
+	SetPackPosition(hPluginPack, 9);
 	return Handle:ReadPackCell(hPluginPack);
 }
 
 UpdateStatus:Updater_GetStatus(index)
 {
 	new Handle:hPluginPack = GetArrayCell(g_hPluginPacks, index);
-	SetPackPosition(hPluginPack, 16);
+	SetPackPosition(hPluginPack, 18);
 	return UpdateStatus:ReadPackCell(hPluginPack);
 }
 
 Updater_SetStatus(index, UpdateStatus:status)
 {
 	new Handle:hPluginPack = GetArrayCell(g_hPluginPacks, index);
-	SetPackPosition(hPluginPack, 16);
+	SetPackPosition(hPluginPack, 18);
 	WritePackCell(hPluginPack, _:status);
 }
 
 Updater_GetURL(index, String:buffer[], size)
 {
 	new Handle:hPluginPack = GetArrayCell(g_hPluginPacks, index);
-	SetPackPosition(hPluginPack, 24);
+	SetPackPosition(hPluginPack, 27);
 	ReadPackString(hPluginPack, buffer, size);
 }
 
 Updater_SetURL(index, const String:url[])
 {
 	new Handle:hPluginPack = GetArrayCell(g_hPluginPacks, index);
-	SetPackPosition(hPluginPack, 24);
+	SetPackPosition(hPluginPack, 27);
 	WritePackString(hPluginPack, url);
 }
 
