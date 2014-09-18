@@ -106,18 +106,18 @@ ParseSMCPathForDownload(const String:path[], String:buffer[], maxlength)
 // Parses a plugin's update file.
 // Logs update notes and begins download if required.
 // Returns true if an update was available.
-new Handle:g_SMCSections;
-new Handle:g_SMCDataTrie;
-new Handle:g_SMCDataPack;
-new g_iSMCLine;
+static Handle:SMC_Sections;
+static Handle:SMC_DataTrie;
+static Handle:SMC_DataPack;
+static SMC_LineNum;
 
 bool:ParseUpdateFile(index, const String:path[])
 {
 	/* Return true if an update was available. */
-	g_SMCSections = CreateArray(64);
-	g_SMCDataTrie = CreateTrie();
-	g_SMCDataPack = CreateDataPack();
-	g_iSMCLine = 0;
+	SMC_Sections = CreateArray(64);
+	SMC_DataTrie = CreateTrie();
+	SMC_DataPack = CreateDataPack();
+	SMC_LineNum = 0;
 	
 	new Handle:smc = SMC_CreateParser();
 	
@@ -146,7 +146,7 @@ bool:ParseUpdateFile(index, const String:path[])
 		// latest version.
 		new String:smcLatestVersion[16];
 		
-		if (GetTrieValue(g_SMCDataTrie, "version->latest", hPack))
+		if (GetTrieValue(SMC_DataTrie, "version->latest", hPack))
 		{
 			ResetPack(hPack);
 			ReadPackString(hPack, smcLatestVersion, sizeof(smcLatestVersion));
@@ -167,7 +167,7 @@ bool:ParseUpdateFile(index, const String:path[])
 				Updater_Log("Update available for \"%s\". Current: %s - Latest: %s", sFilename, sCurrentVersion, smcLatestVersion);
 			}
 			
-			if (GetTrieValue(g_SMCDataTrie, "information->notes", hPack))
+			if (GetTrieValue(SMC_DataTrie, "information->notes", hPack))
 			{
 				ResetPack(hPack);
 				
@@ -184,27 +184,27 @@ bool:ParseUpdateFile(index, const String:path[])
 			{
 				// Get previous version.
 				new String:smcPrevVersion[16];
-				if (GetTrieValue(g_SMCDataTrie, "version->previous", hPack))
+				if (GetTrieValue(SMC_DataTrie, "version->previous", hPack))
 				{
 					ResetPack(hPack);
 					ReadPackString(hPack, smcPrevVersion, sizeof(smcPrevVersion));
 				}
 				
 				// Check if we only need the patch files.
-				if (StrEqual(sCurrentVersion, smcPrevVersion) && GetTrieValue(g_SMCDataTrie, "patch->plugin", hPack))
+				if (StrEqual(sCurrentVersion, smcPrevVersion) && GetTrieValue(SMC_DataTrie, "patch->plugin", hPack))
 				{
 					ParseSMCFilePack(index, hPack, hFiles);
 					
-					if (g_bGetSource && GetTrieValue(g_SMCDataTrie, "patch->source", hPack))
+					if (g_bGetSource && GetTrieValue(SMC_DataTrie, "patch->source", hPack))
 					{
 						ParseSMCFilePack(index, hPack, hFiles);
 					}
 				}
-				else if (GetTrieValue(g_SMCDataTrie, "files->plugin", hPack))
+				else if (GetTrieValue(SMC_DataTrie, "files->plugin", hPack))
 				{
 					ParseSMCFilePack(index, hPack, hFiles);
 					
-					if (g_bGetSource && GetTrieValue(g_SMCDataTrie, "files->source", hPack))
+					if (g_bGetSource && GetTrieValue(SMC_DataTrie, "files->source", hPack))
 					{
 						ParseSMCFilePack(index, hPack, hFiles);
 					}
@@ -226,14 +226,14 @@ bool:ParseUpdateFile(index, const String:path[])
 		
 		Updater_DebugLog(" ");
 		Updater_DebugLog("SMC DEBUG");
-		ResetPack(g_SMCDataPack);
+		ResetPack(SMC_DataPack);
 		
-		while (IsPackReadable(g_SMCDataPack, 1))
+		while (IsPackReadable(SMC_DataPack, 1))
 		{
-			ReadPackString(g_SMCDataPack, sBuffer, sizeof(sBuffer));
+			ReadPackString(SMC_DataPack, sBuffer, sizeof(sBuffer));
 			Updater_DebugLog("%s", sBuffer);
 			
-			if (GetTrieValue(g_SMCDataTrie, sBuffer, hPack))
+			if (GetTrieValue(SMC_DataTrie, sBuffer, hPack))
 			{
 				iCount = 0;
 				ResetPack(hPack);
@@ -251,7 +251,7 @@ bool:ParseUpdateFile(index, const String:path[])
 	}
 	else
 	{
-		Updater_Log("SMC parsing error on line %d", g_iSMCLine);
+		Updater_Log("SMC parsing error on line %d", SMC_LineNum);
 		
 		Updater_GetURL(index, sBuffer, sizeof(sBuffer));
 		Updater_Log("  [0]  URL: %s", sBuffer);
@@ -263,21 +263,21 @@ bool:ParseUpdateFile(index, const String:path[])
 	}
 	
 	// Clean up SMC data.
-	ResetPack(g_SMCDataPack);
+	ResetPack(SMC_DataPack);
 	
-	while (IsPackReadable(g_SMCDataPack, 1))
+	while (IsPackReadable(SMC_DataPack, 1))
 	{
-		ReadPackString(g_SMCDataPack, sBuffer, sizeof(sBuffer));
+		ReadPackString(SMC_DataPack, sBuffer, sizeof(sBuffer));
 		
-		if (GetTrieValue(g_SMCDataTrie, sBuffer, hPack))
+		if (GetTrieValue(SMC_DataTrie, sBuffer, hPack))
 		{
 			CloseHandle(hPack);
 		}
 	}
 	
-	CloseHandle(g_SMCSections);
-	CloseHandle(g_SMCDataTrie);
-	CloseHandle(g_SMCDataPack);
+	CloseHandle(SMC_Sections);
+	CloseHandle(SMC_DataTrie);
+	CloseHandle(SMC_DataPack);
 	CloseHandle(smc);
 	
 	return bUpdate;
@@ -326,13 +326,13 @@ ParseSMCFilePack(index, Handle:hPack, Handle:hFiles)
 
 public SMCResult:Updater_RawLine(Handle:smc, const String:line[], lineno)
 {
-	g_iSMCLine = lineno;
+	SMC_LineNum = lineno;
 	return SMCParse_Continue;
 }
 
 public SMCResult:Updater_NewSection(Handle:smc, const String:name[], bool:opt_quotes)
 {
-	PushArrayString(g_SMCSections, name);
+	PushArrayString(SMC_Sections, name);
 	return SMCParse_Continue;
 }
 
@@ -340,15 +340,15 @@ public SMCResult:Updater_KeyValue(Handle:smc, const String:key[], const String:v
 {
 	decl String:sCurSection[MAX_URL_LENGTH], String:sKey[MAX_URL_LENGTH], Handle:hPack;
 	
-	GetArrayString(g_SMCSections, GetArraySize(g_SMCSections)-1, sCurSection, sizeof(sCurSection));
+	GetArrayString(SMC_Sections, GetArraySize(SMC_Sections)-1, sCurSection, sizeof(sCurSection));
 	FormatEx(sKey, sizeof(sKey), "%s->%s", sCurSection, key);
 	StringToLower(sKey);
 	
-	if (!GetTrieValue(g_SMCDataTrie, sKey, hPack))
+	if (!GetTrieValue(SMC_DataTrie, sKey, hPack))
 	{
 		hPack = CreateDataPack();
-		SetTrieValue(g_SMCDataTrie, sKey, hPack);
-		WritePackString(g_SMCDataPack, sKey);
+		SetTrieValue(SMC_DataTrie, sKey, hPack);
+		WritePackString(SMC_DataPack, sKey);
 	}
 	
 	WritePackString(hPack, value);
@@ -357,9 +357,9 @@ public SMCResult:Updater_KeyValue(Handle:smc, const String:key[], const String:v
 
 public SMCResult:Updater_EndSection(Handle:smc)
 {
-	if (GetArraySize(g_SMCSections))
+	if (GetArraySize(SMC_Sections))
 	{
-		RemoveFromArray(g_SMCSections, GetArraySize(g_SMCSections)-1);
+		RemoveFromArray(SMC_Sections, GetArraySize(SMC_Sections)-1);
 	}
 	
 	return SMCParse_Continue;

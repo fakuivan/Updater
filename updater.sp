@@ -42,8 +42,6 @@ enum UpdateStatus {
 	Status_Error,			// An error occured while downloading.
 };
 
-new Handle:g_hCvarVersion = INVALID_HANDLE;
-new Handle:g_hCvarUpdater = INVALID_HANDLE;
 new bool:g_bGetDownload, bool:g_bGetSource;
 
 new Handle:g_hPluginPacks = INVALID_HANDLE;
@@ -51,9 +49,9 @@ new Handle:g_hDownloadQueue = INVALID_HANDLE;
 new Handle:g_hRemoveQueue = INVALID_HANDLE;
 new bool:g_bDownloading = false;
 
-new Handle:g_hUpdateTimer = INVALID_HANDLE;
-new Float:g_fLastUpdate = 0.0;
-new String:g_sDataPath[PLATFORM_MAX_PATH];
+static Handle:_hUpdateTimer = INVALID_HANDLE;
+static Float:_fLastUpdate = 0.0;
+static String:_sDataPath[PLATFORM_MAX_PATH];
 
 /* Core Includes */
 #include "updater/plugins.sp"
@@ -105,13 +103,15 @@ public OnPluginStart()
 	LoadTranslations("common.phrases");
 	
 	// Convars.
-	g_hCvarVersion = CreateConVar("sm_updater_version", PLUGIN_VERSION, PLUGIN_NAME, FCVAR_PLUGIN|FCVAR_NOTIFY|FCVAR_DONTRECORD);
-	OnVersionChanged(g_hCvarVersion, "", "");
-	HookConVarChange(g_hCvarVersion, OnVersionChanged);
+	new Handle:hCvar = INVALID_HANDLE;
 	
-	g_hCvarUpdater = CreateConVar("sm_updater", "2", "Determines update functionality. (1 = Notify, 2 = Download, 3 = Include source code)", FCVAR_PLUGIN, true, 1.0, true, 3.0);
-	OnSettingsChanged(g_hCvarUpdater, "", "");
-	HookConVarChange(g_hCvarUpdater, OnSettingsChanged);
+	hCvar = CreateConVar("sm_updater_version", PLUGIN_VERSION, PLUGIN_NAME, FCVAR_PLUGIN|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	OnVersionChanged(hCvar, "", "");
+	HookConVarChange(hCvar, OnVersionChanged);
+	
+	hCvar = CreateConVar("sm_updater", "2", "Determines update functionality. (1 = Notify, 2 = Download, 3 = Include source code)", FCVAR_PLUGIN, true, 1.0, true, 3.0);
+	OnSettingsChanged(hCvar, "", "");
+	HookConVarChange(hCvar, OnSettingsChanged);
 	
 	// Commands.
 	RegAdminCmd("sm_updater_check", Command_Check, ADMFLAG_RCON, "Forces Updater to check for updates.");
@@ -123,7 +123,7 @@ public OnPluginStart()
 	g_hRemoveQueue = CreateArray();
 	
 	// Temp path for checking update files.
-	BuildPath(Path_SM, g_sDataPath, sizeof(g_sDataPath), "data/updater.txt");
+	BuildPath(Path_SM, _sDataPath, sizeof(_sDataPath), "data/updater.txt");
 	
 #if !defined DEBUG
 	// Add this plugin to the autoupdater.
@@ -131,13 +131,13 @@ public OnPluginStart()
 #endif
 
 	// Check for updates every 24 hours.
-	g_hUpdateTimer = CreateTimer(86400.0, Timer_CheckUpdates, _, TIMER_REPEAT);
+	_hUpdateTimer = CreateTimer(86400.0, Timer_CheckUpdates, _, TIMER_REPEAT);
 }
 
 public OnAllPluginsLoaded()
 {
 	// Check for updates on startup.
-	TriggerTimer(g_hUpdateTimer, true);
+	TriggerTimer(_hUpdateTimer, true);
 }
 
 public Action:Timer_CheckUpdates(Handle:timer)
@@ -154,14 +154,14 @@ public Action:Timer_CheckUpdates(Handle:timer)
 		}
 	}
 	
-	g_fLastUpdate = GetTickedTime();
+	_fLastUpdate = GetTickedTime();
 	
 	return Plugin_Continue;
 }
 
 public Action:Command_Check(client, args)
 {
-	new Float:fNextUpdate = g_fLastUpdate + 3600.0;
+	new Float:fNextUpdate = _fLastUpdate + 3600.0;
 	
 	if (fNextUpdate > GetTickedTime())
 	{
@@ -170,7 +170,7 @@ public Action:Command_Check(client, args)
 	else
 	{
 		ReplyToCommand(client, "[Updater] Checking for updates.");
-		TriggerTimer(g_hUpdateTimer, true);
+		TriggerTimer(_hUpdateTimer, true);
 	}
 
 	return Plugin_Handled;
@@ -196,7 +196,7 @@ public Action:Command_Status(client, args)
 		}
 	}
 	
-	ReplyToCommand(client, "Last update check was %.1f minutes ago.", (GetTickedTime() - g_fLastUpdate) / 60.0);
+	ReplyToCommand(client, "Last update check was %.1f minutes ago.", (GetTickedTime() - _fLastUpdate) / 60.0);
 	ReplyToCommand(client, "[Updater] --- Status End ---");
 
 	return Plugin_Handled;
@@ -206,7 +206,7 @@ public OnVersionChanged(Handle:convar, const String:oldValue[], const String:new
 {
 	if (!StrEqual(newValue, PLUGIN_VERSION))
 	{
-		SetConVarString(g_hCvarVersion, PLUGIN_VERSION);
+		SetConVarString(convar, PLUGIN_VERSION);
 	}
 }
 
@@ -253,7 +253,7 @@ Updater_Check(index)
 		decl String:url[MAX_URL_LENGTH];
 		Updater_GetURL(index, url, sizeof(url));
 		Updater_SetStatus(index, Status_Checking);
-		AddToDownloadQueue(index, url, g_sDataPath);
+		AddToDownloadQueue(index, url, _sDataPath);
 	}
 }
 
