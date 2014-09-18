@@ -58,7 +58,7 @@ ProcessDownloadQueue(bool:force=false)
 	}
 	
 	new Handle:hQueuePack = GetArrayCell(g_hDownloadQueue, 0);
-	SetPackPosition(hQueuePack, 8);
+	SetPackPosition(hQueuePack, 9);
 	
 	decl String:url[MAX_URL_LENGTH], String:dest[PLATFORM_MAX_PATH];
 	ReadPackString(hQueuePack, url, sizeof(url));
