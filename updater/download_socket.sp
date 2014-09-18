@@ -69,80 +69,80 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 			idx = 0;
 		}
 		else
+		{			
+			idx += 4;
+		}
+	
+		if (strncmp(data, "HTTP/", 5) == 0)
 		{
-			if (strncmp(data, "HTTP/", 5) == 0)
+			// Check for location header.
+			new idx2 = StrContains(data, "\nLocation: ", false);
+			
+			if (idx2 > -1 && (idx2 < idx || !idx))
 			{
-				// Check for location header.
-				new idx2 = StrContains(data, "\nLocation: ", false);
-				
-				if (idx2 > -1 && idx2 < idx)
-				{
-					if (++iRedirects > MAX_REDIRECTS)
-					{
-						CloseSocketHandles(socket, hDLPack);
-						DownloadEnded(false, "Socket error: too many redirects.");
-						return;
-					}
-					else
-					{
-						SetPackPosition(hDLPack, 8);
-						WritePackCell(hDLPack, iRedirects);
-					}
-				
-					// skip to url
-					idx2 += 11;
-					
-					decl String:sURL[MAX_URL_LENGTH];
-					strcopy(sURL, (FindCharInString(data[idx2], '\r') + 1), data[idx2]);
-					
-					PrefixURL(sURL, sizeof(sURL), sURL);
-					
-#if defined DEBUG
-					Updater_DebugLog("  [ ]  Redirected: %s", sURL);
-#endif
-					
-					if (strncmp(sURL, "https://", 8) == 0)
-					{
-						CloseSocketHandles(socket, hDLPack);
-						
-						decl String:sError[256];
-						FormatEx(sError, sizeof(sError), "Socket does not support HTTPs (URL: %s).", sURL);
-						DownloadEnded(false, sError);
-						return;
-					}
-					
-					decl String:hostname[64], String:location[128], String:filename[64], String:sRequest[MAX_URL_LENGTH+128];
-					ParseURL(sURL, hostname, sizeof(hostname), location, sizeof(location), filename, sizeof(filename));
-					FormatEx(sRequest, sizeof(sRequest), "GET %s/%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n", location, filename, hostname);
-					
-					SetPackPosition(hDLPack, 24); // sRequest
-					WritePackString(hDLPack, sRequest);
-					
-					new Handle:newSocket = SocketCreate(SOCKET_TCP, OnSocketError);
-					SocketSetArg(newSocket, hDLPack);
-					SocketSetOption(newSocket, ConcatenateCallbacks, 4096);
-					SocketConnect(newSocket, OnSocketConnected, OnSocketReceive, OnSocketDisconnected, hostname, 80);
-					
-					CloseHandle(socket);
-					return;
-				}
-				
-				// Check HTTP status code
-				decl String:sStatusCode[64];
-				strcopy(sStatusCode, (FindCharInString(data, '\r') - 8), data[9]);
-				
-				if (strncmp(sStatusCode, "200", 3) != 0)
+				if (++iRedirects > MAX_REDIRECTS)
 				{
 					CloseSocketHandles(socket, hDLPack);
+					DownloadEnded(false, "Socket error: too many redirects.");
+					return;
+				}
+				else
+				{
+					SetPackPosition(hDLPack, 8);
+					WritePackCell(hDLPack, iRedirects);
+				}
+			
+				// skip to url
+				idx2 += 11;
 				
+				decl String:sURL[MAX_URL_LENGTH];
+				strcopy(sURL, (FindCharInString(data[idx2], '\r') + 1), data[idx2]);
+				
+				PrefixURL(sURL, sizeof(sURL), sURL);
+				
+#if defined DEBUG
+				Updater_DebugLog("  [ ]  Redirected: %s", sURL);
+#endif
+				
+				if (strncmp(sURL, "https://", 8) == 0)
+				{
+					CloseSocketHandles(socket, hDLPack);
+					
 					decl String:sError[256];
-					FormatEx(sError, sizeof(sError), "Socket error: %s", sStatusCode);
+					FormatEx(sError, sizeof(sError), "Socket does not support HTTPs (URL: %s).", sURL);
 					DownloadEnded(false, sError);
 					return;
 				}
+				
+				decl String:hostname[64], String:location[128], String:filename[64], String:sRequest[MAX_URL_LENGTH+128];
+				ParseURL(sURL, hostname, sizeof(hostname), location, sizeof(location), filename, sizeof(filename));
+				FormatEx(sRequest, sizeof(sRequest), "GET %s/%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n", location, filename, hostname);
+				
+				SetPackPosition(hDLPack, 24); // sRequest
+				WritePackString(hDLPack, sRequest);
+				
+				new Handle:newSocket = SocketCreate(SOCKET_TCP, OnSocketError);
+				SocketSetArg(newSocket, hDLPack);
+				SocketSetOption(newSocket, ConcatenateCallbacks, 4096);
+				SocketConnect(newSocket, OnSocketConnected, OnSocketReceive, OnSocketDisconnected, hostname, 80);
+				
+				CloseHandle(socket);
+				return;
 			}
 			
-			idx += 4;
+			// Check HTTP status code
+			decl String:sStatusCode[64];
+			strcopy(sStatusCode, (FindCharInString(data, '\r') - 8), data[9]);
+			
+			if (strncmp(sStatusCode, "200", 3) != 0)
+			{
+				CloseSocketHandles(socket, hDLPack);
+			
+				decl String:sError[256];
+				FormatEx(sError, sizeof(sError), "Socket error: %s", sStatusCode);
+				DownloadEnded(false, sError);
+				return;
+			}
 		}
 		
 		SetPackPosition(hDLPack, 0);
