@@ -3,6 +3,11 @@
 
 #define MAX_REDIRECTS 5
 
+static DLPack_Header = 0;
+static DLPack_Redirects = 0;
+static DLPack_File = 0;
+static DLPack_Request = 0;
+
 Download_Socket(const String:url[], const String:dest[])
 {
 	decl String:sURL[MAX_URL_LENGTH];
@@ -32,10 +37,18 @@ Download_Socket(const String:url[], const String:dest[])
 	FormatEx(sRequest, sizeof(sRequest), "GET %s/%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n", location, filename, hostname);
 	
 	new Handle:hDLPack = CreateDataPack();
-	WritePackCell(hDLPack, 0);			// 0 - bParsedHeader
-	WritePackCell(hDLPack, 0);			// 8 - iRedirects
-	WritePackCell(hDLPack, _:hFile);	// 16
-	WritePackString(hDLPack, sRequest);	// 24
+	
+	DLPack_Header = GetPackPosition(hDLPack);
+	WritePackCell(hDLPack, 0);
+	
+	DLPack_Redirects = GetPackPosition(hDLPack);
+	WritePackCell(hDLPack, 0);
+	
+	DLPack_File = GetPackPosition(hDLPack);
+	WritePackCell(hDLPack, _:hFile);
+	
+	DLPack_Request = GetPackPosition(hDLPack);
+	WritePackString(hDLPack, sRequest);
 	
 	new Handle:socket = SocketCreate(SOCKET_TCP, OnSocketError);
 	SocketSetArg(socket, hDLPack);
@@ -46,7 +59,7 @@ Download_Socket(const String:url[], const String:dest[])
 public OnSocketConnected(Handle:socket, any:hDLPack)
 {
 	decl String:sRequest[MAX_URL_LENGTH+128];
-	SetPackPosition(hDLPack, 24);
+	SetPackPosition(hDLPack, DLPack_Request);
 	ReadPackString(hDLPack, sRequest, sizeof(sRequest));
 	
 	SocketSend(socket, sRequest);
@@ -57,7 +70,7 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 	new idx = 0;
 	
 	// Check if the HTTP header has already been parsed.
-	SetPackPosition(hDLPack, 0);
+	SetPackPosition(hDLPack, DLPack_Header);
 	new bool:bParsedHeader = bool:ReadPackCell(hDLPack);
 	new iRedirects = ReadPackCell(hDLPack);
 	
@@ -88,7 +101,7 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 				}
 				else
 				{
-					SetPackPosition(hDLPack, 8);
+					SetPackPosition(hDLPack, DLPack_Redirects);
 					WritePackCell(hDLPack, iRedirects);
 				}
 			
@@ -118,7 +131,7 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 				ParseURL(sURL, hostname, sizeof(hostname), location, sizeof(location), filename, sizeof(filename));
 				FormatEx(sRequest, sizeof(sRequest), "GET %s/%s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\nPragma: no-cache\r\nCache-Control: no-cache\r\n\r\n", location, filename, hostname);
 				
-				SetPackPosition(hDLPack, 24); // sRequest
+				SetPackPosition(hDLPack, DLPack_Request); // sRequest
 				WritePackString(hDLPack, sRequest);
 				
 				new Handle:newSocket = SocketCreate(SOCKET_TCP, OnSocketError);
@@ -145,12 +158,12 @@ public OnSocketReceive(Handle:socket, String:data[], const size, any:hDLPack)
 			}
 		}
 		
-		SetPackPosition(hDLPack, 0);
+		SetPackPosition(hDLPack, DLPack_Header);
 		WritePackCell(hDLPack, 1);	// bParsedHeader
 	}
 	
 	// Write data to file.
-	SetPackPosition(hDLPack, 16);
+	SetPackPosition(hDLPack, DLPack_File);
 	new Handle:hFile = Handle:ReadPackCell(hDLPack);
 	
 	while (idx < size)
@@ -177,7 +190,7 @@ public OnSocketError(Handle:socket, const errorType, const errorNum, any:hDLPack
 
 CloseSocketHandles(Handle:socket, Handle:hDLPack)
 {
-	SetPackPosition(hDLPack, 16);
+	SetPackPosition(hDLPack, DLPack_File);
 	CloseHandle(Handle:ReadPackCell(hDLPack));	// hFile
 	CloseHandle(hDLPack);
 	CloseHandle(socket);
