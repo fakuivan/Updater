@@ -4,6 +4,7 @@
 #include "updater/download_curl.sp"
 #include "updater/download_socket.sp"
 #include "updater/download_steamtools.sp"
+#include "updater/download_steamworks.sp"
 
 static QueuePack_URL = 0;
 
@@ -79,7 +80,18 @@ ProcessDownloadQueue(bool:force=false)
 	
 	g_bDownloading = true;
 	
-	if (STEAMTOOLS_AVAILABLE())
+	if (STEAMWORKS_AVAILABLE())
+	{
+		if (SteamWorks_IsLoaded())
+		{
+			Download_SteamWorks(url, dest);
+		}
+		else
+		{
+			CreateTimer(10.0, Timer_RetryQueue);
+		}
+	}
+	else if (STEAMTOOLS_AVAILABLE())
 	{
 		if (g_bSteamLoaded)
 		{
