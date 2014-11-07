@@ -67,7 +67,7 @@ ProcessDownloadQueue(bool:force=false)
 	ReadPackString(hQueuePack, url, sizeof(url));
 	ReadPackString(hQueuePack, dest, sizeof(dest));
 	
-	if (!CURL_AVAILABLE() && !SOCKET_AVAILABLE() && !STEAMTOOLS_AVAILABLE())
+	if (!CURL_AVAILABLE() && !SOCKET_AVAILABLE() && !STEAMTOOLS_AVAILABLE() && !STEAMWORKS_AVAILABLE())
 	{
 		SetFailState(EXTENSION_ERROR);
 	}
